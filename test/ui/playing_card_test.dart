@@ -66,4 +66,34 @@ void main() {
       expect(card.contains(rect.bottomRight), isTrue);
     }
   });
+
+  testWidgets('atılamayan kağıt saydam yapılmaz, üstü karartılır',
+      (tester) async {
+    for (final dimmed in [false, true]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: PlayingCardView(
+                card: PlayingCard.parse('SA'),
+                width: 90,
+                dimmed: dimmed,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Saydamlık kartın altındaki kağıdı gösterip yelpazeyi iç içe geçmiş
+      // gibi gösteriyordu; karartma tülü kullanılıyor.
+      final opacities = tester.widgetList<Opacity>(find.byType(Opacity));
+      for (final o in opacities) {
+        expect(o.opacity, 1, reason: 'kart saydam çiziliyor');
+      }
+      expect(
+        find.byKey(const ValueKey(PlayingCardView.dimKey)),
+        dimmed ? findsOneWidget : findsNothing,
+      );
+    }
+  });
 }

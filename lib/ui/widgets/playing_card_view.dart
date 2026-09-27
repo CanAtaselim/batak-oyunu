@@ -28,10 +28,14 @@ class PlayingCardView extends StatelessWidget {
   /// Kart oranı: 64 × 92.
   static const double aspect = 92 / 64;
 
+  /// Karartma tülünün anahtarı; testler bununla arıyor.
+  static const String dimKey = 'kartKarartma';
+
   final PlayingCard card;
   final double width;
 
-  /// Atılamayan kağıtlar soluk görünür.
+  /// Atılamayan kağıtlar kararır. Saydamlık kullanılmaz: saydam kart alttaki
+  /// kağıdı göstererek yelpazeyi iç içe geçmiş gibi gösteriyordu.
   final bool dimmed;
 
   /// İndeks harfleri Türkçe: V (Vale), K (Kız), P (Papaz), A (As).
@@ -48,53 +52,57 @@ class PlayingCardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = colorOf(card.suit);
     final label = trShortNames ? card.rankCodeTr : card.rankCode;
-    return Opacity(
-      opacity: dimmed ? 0.55 : 1,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: BatakColors.cardFace,
-          borderRadius: BorderRadius.circular(width * 0.13),
-          border: Border.all(color: BatakColors.cardEdge, width: 1),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x33000000),
-              blurRadius: 6,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            // Ortadaki tür simgesi: masadaki kağıdı uzaktan tanıtır. Tam
-            // renkte durur, iki köşedeki indekslere yer bırakır.
-            Center(
-              child: Text(
-                card.suit.symbol,
-                style: TextStyle(
-                  fontSize: width * 0.5,
-                  height: 1,
-                  color: color,
-                ),
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: BatakColors.cardFace,
+        borderRadius: BorderRadius.circular(width * 0.13),
+        border: Border.all(color: BatakColors.cardEdge, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Ortadaki tür simgesi: masadaki kağıdı uzaktan tanıtır. Tam
+          // renkte durur, iki köşedeki indekslere yer bırakır.
+          Center(
+            child: Text(
+              card.suit.symbol,
+              style: TextStyle(
+                fontSize: width * 0.5,
+                height: 1,
+                color: color,
               ),
             ),
-            Positioned(
-              left: width * 0.07,
-              top: width * 0.02,
+          ),
+          Positioned(
+            left: width * 0.07,
+            top: width * 0.02,
+            child: _corner(color, label),
+          ),
+          Positioned(
+            right: width * 0.07,
+            bottom: width * 0.02,
+            child: Transform.rotate(
+              angle: math.pi,
               child: _corner(color, label),
             ),
-            Positioned(
-              right: width * 0.07,
-              bottom: width * 0.02,
-              child: Transform.rotate(
-                angle: math.pi,
-                child: _corner(color, label),
-              ),
+          ),
+          // Atılamayan kağıdın üstüne serilen koyu tül. Kartın kendisi opak
+          // kalır; saydamlık kullanılsaydı alttaki kağıt içinden görünürdü.
+          if (dimmed)
+            const Positioned.fill(
+              key: ValueKey(dimKey),
+              child: ColoredBox(color: Color(0x52000A06)),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
