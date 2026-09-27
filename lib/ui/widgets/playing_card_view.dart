@@ -12,7 +12,7 @@ import '../theme.dart';
 /// kartın görünen tek parçası sol üst köşedir; masaya atılan kağıt başka bir
 /// kağıdın altında kalırsa da diğer köşesinden okunur.
 ///
-/// Pip yok; ortadaki soluk tür simgesi kağıdı uzaktan tanıtır.
+/// Pip yok; ortadaki büyük tür simgesi kağıdı uzaktan tanıtır.
 ///
 /// Tüm ölçüler [width]'e oranlıdır, böylece aynı widget hem 52 px'lik masa
 /// kağıdı hem 92 px'lik büyük kart olur.
@@ -68,15 +68,15 @@ class PlayingCardView extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // Soluk tür simgesi: masadaki kağıdı uzaktan tanımak için. Ortada
-            // durur, iki köşedeki indekslere yer bırakır.
+            // Ortadaki tür simgesi: masadaki kağıdı uzaktan tanıtır. Tam
+            // renkte durur, iki köşedeki indekslere yer bırakır.
             Center(
               child: Text(
                 card.suit.symbol,
                 style: TextStyle(
                   fontSize: width * 0.5,
                   height: 1,
-                  color: color.withValues(alpha: 0.16),
+                  color: color,
                 ),
               ),
             ),
