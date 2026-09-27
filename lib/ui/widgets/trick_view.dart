@@ -1,0 +1,175 @@
+import 'package:flutter/material.dart';
+
+import '../../engine/models/game_state.dart';
+import '../../engine/models/trick.dart';
+import '../theme.dart';
+import 'playing_card_view.dart';
+
+/// Masanın ortası: her koltuğun attığı kağıt kendi yönünde durur.
+///
+/// Koltuk 0 alt, 1 sağ, 2 üst, 3 sol. Kağıt atılırken sahibinin yönünden
+/// kayarak gelir; el toplanırken dördü birlikte kazananın yönüne süzülür.
+class TrickView extends StatelessWidget {
+  const TrickView({
+    required this.trick,
+    this.winner,
+    this.collecting = false,
+    this.cardWidth = 54,
+    this.turkishIndices = false,
+    super.key,
+  });
+
+  final Trick trick;
+
+  /// El sonuçlandıysa kazanan koltuk; sürerken null.
+  final int? winner;
+
+  /// El toplanıyor: kağıtlar kazananın yönüne gidip kayboluyor.
+  final bool collecting;
+
+  final double cardWidth;
+  final bool turkishIndices;
+
+  static const _slots = <int, Alignment>{
+    0: Alignment(0, 0.72),
+    1: Alignment(0.72, 0),
+    2: Alignment(0, -0.72),
+    3: Alignment(-0.72, 0),
+  };
+
+  static const _angles = <int, double>{0: 0.03, 1: 0.09, 2: -0.04, 3: -0.09};
+
+  /// Koltuğun masaya göre yönü; hem giriş hem toplama animasyonu bunu kullanır.
+  static const _dirs = <int, Offset>{
+    0: Offset(0, 1),
+    1: Offset(1, 0),
+    2: Offset(0, -1),
+    3: Offset(-1, 0),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final height = cardWidth * PlayingCardView.aspect;
+    final collectDir = collecting && winner != null ? _dirs[winner]! : null;
+    return SizedBox(
+      width: cardWidth * 3.1,
+      height: height * 2.3,
+      child: Stack(
+        children: [
+          for (var seat = 0; seat < GameState.seatCount; seat++)
+            if (trick.cardOf(seat) != null)
+              Align(
+                alignment: _slots[seat]!,
+                child: _TrickCard(
+                  key: ValueKey(trick.cardOf(seat)!.code),
+                  from: _dirs[seat]!,
+                  angle: _angles[seat]!,
+                  isWinner: winner == seat,
+                  collectTo: collectDir,
+                  child: PlayingCardView(
+                    card: trick.cardOf(seat)!,
+                    width: cardWidth,
+                    trShortNames: turkishIndices,
+                  ),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Masaya atılan tek kağıt: geldiği yönden kayar, kazandıysa parlar, el
+/// toplanırken kazananın yönüne süzülür.
+class _TrickCard extends StatefulWidget {
+  const _TrickCard({
+    required this.from,
+    required this.angle,
+    required this.isWinner,
+    required this.collectTo,
+    required this.child,
+    super.key,
+  });
+
+  final Offset from;
+  final double angle;
+  final bool isWinner;
+  final Offset? collectTo;
+  final Widget child;
+
+  @override
+  State<_TrickCard> createState() => _TrickCardState();
+}
+
+class _TrickCardState extends State<_TrickCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _enter;
+
+  @override
+  void initState() {
+    super.initState();
+    _enter = AnimationController(
+      duration: const Duration(milliseconds: 210),
+      vsync: this,
+    );
+    // Süre build'de MediaQuery'den okunamaz; ilk çerçevede ayarlanır.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _enter.duration = anim(context, 210);
+      _enter.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _enter.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final collecting = widget.collectTo != null;
+    return AnimatedBuilder(
+      animation: _enter,
+      builder: (context, child) {
+        final t = Curves.easeOutCubic.transform(_enter.value);
+        return Transform.translate(
+          // Kağıt sahibinin yönünden içeri kayar.
+          offset: widget.from * (1 - t) * 34,
+          child: Opacity(opacity: 0.25 + 0.75 * t, child: child),
+        );
+      },
+      child: AnimatedSlide(
+        offset: collecting ? widget.collectTo! * 1.9 : Offset.zero,
+        duration: anim(context, 260),
+        curve: Curves.easeInCubic,
+        child: AnimatedOpacity(
+          opacity: collecting ? 0 : 1,
+          duration: anim(context, 260),
+          child: Transform.rotate(
+            angle: widget.angle,
+            child: AnimatedScale(
+              duration: anim(context, 160),
+              scale: widget.isWinner && !collecting ? 1.06 : 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: widget.isWinner && !collecting
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x99D7A254),
+                            blurRadius: 14,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: widget.child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
