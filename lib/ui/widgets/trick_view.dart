@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../engine/models/game_state.dart';
 import '../../engine/models/trick.dart';
 import '../theme.dart';
 import 'playing_card_view.dart';
@@ -9,6 +8,9 @@ import 'playing_card_view.dart';
 ///
 /// Koltuk 0 alt, 1 sağ, 2 üst, 3 sol. Kağıt atılırken sahibinin yönünden
 /// kayarak gelir; el toplanırken dördü birlikte kazananın yönüne süzülür.
+///
+/// Kağıtlar **atılma sırasına göre** üst üste biner: eli açanın kağıdı en
+/// altta, en son atılan kağıt en üstte durur. Gerçek masada olduğu gibi.
 class TrickView extends StatelessWidget {
   const TrickView({
     required this.trick,
@@ -56,23 +58,23 @@ class TrickView extends StatelessWidget {
       height: height * 2.3,
       child: Stack(
         children: [
-          for (var seat = 0; seat < GameState.seatCount; seat++)
-            if (trick.cardOf(seat) != null)
-              Align(
-                alignment: _slots[seat]!,
-                child: _TrickCard(
-                  key: ValueKey(trick.cardOf(seat)!.code),
-                  from: _dirs[seat]!,
-                  angle: _angles[seat]!,
-                  isWinner: winner == seat,
-                  collectTo: collectDir,
-                  child: PlayingCardView(
-                    card: trick.cardOf(seat)!,
-                    width: cardWidth,
-                    trShortNames: turkishIndices,
-                  ),
+          // Atılma sırası çizim sırasıdır: son atılan kağıt en üstte kalır.
+          for (final play in trick.plays)
+            Align(
+              alignment: _slots[play.seat]!,
+              child: _TrickCard(
+                key: ValueKey(play.card.code),
+                from: _dirs[play.seat]!,
+                angle: _angles[play.seat]!,
+                isWinner: winner == play.seat,
+                collectTo: collectDir,
+                child: PlayingCardView(
+                  card: play.card,
+                  width: cardWidth,
+                  trShortNames: turkishIndices,
                 ),
               ),
+            ),
         ],
       ),
     );
