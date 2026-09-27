@@ -108,7 +108,7 @@ void main() {
     final session = c.read(gameControllerProvider)!;
     expect(session.humanCanPlay, isTrue);
 
-    // Yelpazede kartın görünen tek yeri sol şeridi; dokunma oraya gider.
+    // Her kağıdın merkezi dokunulabilir olmalı (bkz. hand_fan_test).
     final hand = session.game.handOf(GameState.humanSeat);
     final legal = controller.humanLegalCards;
     final card = hand.lastWhere(legal.contains);
@@ -116,7 +116,7 @@ void main() {
       (w) => w is PlayingCardView && w.card == card,
     );
     expect(finder, findsOneWidget);
-    await tester.tapAt(tester.getTopLeft(finder) + const Offset(9, 40));
+    await tester.tap(finder);
     await settle(tester);
 
     expect(

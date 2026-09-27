@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:batak/engine/models/card.dart';
 import 'package:batak/engine/models/suit.dart';
@@ -84,19 +85,23 @@ void main() {
     });
   });
 
-  group('yay', () {
+  group('iki sıra yelpaze', () {
     Future<void> pumpFan(WidgetTester tester, List<PlayingCard> hand) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SizedBox(
-              width: 393,
-              child: HandFan(
-                hand: hand,
-                legalCards: const [],
-                enabled: false,
-                onTap: (_) {},
-              ),
+            // Uygulamadaki yerleşim: Column, gevşek genişlik. Sabit genişlikli
+            // bir kutu Stack'in genişlik hatasını gizler.
+            body: Column(
+              children: [
+                const Expanded(child: SizedBox.expand()),
+                HandFan(
+                  hand: hand,
+                  legalCards: const [],
+                  enabled: false,
+                  onTap: (_) {},
+                ),
+              ],
             ),
           ),
         ),
@@ -104,36 +109,218 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
     }
 
-    testWidgets('13 kağıt çizilir ve hiçbiri ekrandan taşmaz', (tester) async {
+    Finder cardFinder(PlayingCard card) =>
+        find.byWidgetPredicate((w) => w is PlayingCardView && w.card == card);
+
+    /// Kartın merkezinin dikey konumu. Dönme merkezi neredeyse hiç
+    /// oynatmadığı için sıraları ayırmakta ve yayı ölçmekte güvenilirdir.
+    double centerY(WidgetTester tester, PlayingCard card) =>
+        tester.getCenter(cardFinder(card)).dy;
+
+    /// Kartın eğimi (radyan). Sola eğik negatif, sağa eğik pozitif.
+    double angleOf(WidgetTester tester, PlayingCard card) {
+      final transform = tester.widget<Transform>(
+        find
+            .ancestor(of: cardFinder(card), matching: find.byType(Transform))
+            .first,
+      );
+      final m = transform.transform.storage;
+      return math.atan2(m[1], m[0]);
+    }
+
+    /// Dönmüş kartın gerçek sınırları: dört köşe de dönüştürülüp kutulanır.
+    ({double left, double right}) boundsOf(
+      WidgetTester tester,
+      PlayingCard card,
+    ) {
+      final finder = cardFinder(card);
+      final xs = [
+        tester.getTopLeft(finder).dx,
+        tester.getTopRight(finder).dx,
+        tester.getBottomLeft(finder).dx,
+        tester.getBottomRight(finder).dx,
+      ];
+      return (left: xs.reduce(math.min), right: xs.reduce(math.max));
+    }
+
+    /// Kağıtları dikey konumlarına göre iki sıraya ayırır. Sıra içindeki yay
+    /// oynaması, sıralar arasındaki boşluktan küçüktür; kümeler karışmaz.
+    (List<PlayingCard>, List<PlayingCard>) rows(
+      WidgetTester tester,
+      List<PlayingCard> hand,
+    ) {
+      final centers = {for (final c in hand) c: centerY(tester, c)};
+      final lowest = centers.values.reduce(math.max);
+      final highest = centers.values.reduce(math.min);
+      final split = (lowest + highest) / 2;
+      return (
+        [for (final c in hand) if (centers[c]! < split) c],
+        [for (final c in hand) if (centers[c]! >= split) c],
+      );
+    }
+
+    testWidgets('13 kağıt üstte 6, altta 7 olarak dizilir', (tester) async {
+      final hand = handDisplayOrder(PlayingCard.shuffled(Random(3)).take(13));
+      await pumpFan(tester, hand);
+      expect(find.byType(PlayingCardView), findsNWidgets(13));
+
+      final (top, bottom) = rows(tester, hand);
+      expect(top.length, 6);
+      expect(bottom.length, 7);
+    });
+
+    testWidgets('dizilişin ilk yarısı üst sırada, ikinci yarısı altta',
+        (tester) async {
+      final hand = handDisplayOrder(PlayingCard.shuffled(Random(8)).take(13));
+      await pumpFan(tester, hand);
+      final (top, bottom) = rows(tester, hand);
+      expect(top, hand.take(6).toList());
+      expect(bottom, hand.skip(6).toList());
+
+      // İki sıra dikeyde hiç karışmaz.
+      final lowestTopRow =
+          top.map((c) => centerY(tester, c)).reduce(math.max);
+      final highestBottomRow =
+          bottom.map((c) => centerY(tester, c)).reduce(math.min);
+      expect(lowestTopRow, lessThan(highestBottomRow));
+    });
+
+    testWidgets('her sıra kendi içinde yay çizer', (tester) async {
+      final hand = handDisplayOrder(PlayingCard.shuffled(Random(5)).take(13));
+      await pumpFan(tester, hand);
+      final (top, bottom) = rows(tester, hand);
+
+      for (final row in [top, bottom]) {
+        final first = row.first;
+        final last = row.last;
+        final middle = row[row.length ~/ 2];
+
+        // Uçlar dışa eğik, orta neredeyse dik.
+        expect(angleOf(tester, first), lessThan(0));
+        expect(angleOf(tester, last), greaterThan(0));
+        expect(
+          angleOf(tester, middle).abs(),
+          lessThan(angleOf(tester, first).abs()),
+        );
+        expect(
+          angleOf(tester, middle).abs(),
+          lessThan(angleOf(tester, last).abs()),
+        );
+
+        // Ortadaki kağıt uçtakilerden yukarıda durur.
+        expect(centerY(tester, middle), lessThan(centerY(tester, first)));
+        expect(centerY(tester, middle), lessThan(centerY(tester, last)));
+      }
+    });
+
+    testWidgets('sıralar üst üste biner ama üst sıranın köşesi görünür',
+        (tester) async {
+      final hand = handDisplayOrder(PlayingCard.shuffled(Random(5)).take(13));
+      await pumpFan(tester, hand);
+      final (top, bottom) = rows(tester, hand);
+
+      // Sıraların ortasındaki kağıtlar dik durur; ölçüm onlardan alınır.
+      final topMid = tester.getRect(cardFinder(top[top.length ~/ 2]));
+      final bottomMid = tester.getRect(cardFinder(bottom[bottom.length ~/ 2]));
+
+      expect(bottomMid.top, lessThan(topMid.bottom), reason: 'sıralar binmiyor');
+      // Üst sıranın yarısına yakını açıkta kalmalı: indeks köşesi görünsün.
+      expect(bottomMid.top - topMid.top, greaterThan(topMid.height * 0.45));
+    });
+
+    testWidgets('hiçbir kağıt ekrandan taşmaz', (tester) async {
       tester.view.physicalSize = const Size(1080, 2316);
       tester.view.devicePixelRatio = 2.75;
       addTearDown(tester.view.reset);
 
       final hand = handDisplayOrder(PlayingCard.shuffled(Random(3)).take(13));
       await pumpFan(tester, hand);
-      expect(find.byType(PlayingCardView), findsNWidgets(13));
-
       for (final card in hand) {
-        final rect = tester.getRect(
-          find.byWidgetPredicate((w) => w is PlayingCardView && w.card == card),
-        );
-        expect(rect.left, greaterThanOrEqualTo(-1), reason: '$card soldan taştı');
-        expect(rect.right, lessThanOrEqualTo(394), reason: '$card sağdan taştı');
+        final bounds = boundsOf(tester, card);
+        expect(bounds.left, greaterThanOrEqualTo(-1), reason: '$card soldan taştı');
+        expect(bounds.right, lessThanOrEqualTo(394), reason: '$card sağdan taştı');
       }
     });
 
-    testWidgets('ortadaki kağıt kenardakilerden yukarıda durur', (tester) async {
-      final hand = handDisplayOrder(PlayingCard.shuffled(Random(5)).take(13));
-      await pumpFan(tester, hand);
+    testWidgets('kağıt eksildikçe sıralar dengeli kalır', (tester) async {
+      final full = handDisplayOrder(PlayingCard.shuffled(Random(9)).take(13));
+      for (final (count, expectedTop, expectedBottom) in const [
+        (12, 6, 6),
+        (9, 4, 5),
+        (5, 2, 3),
+        (2, 1, 1),
+      ]) {
+        final hand = full.take(count).toList();
+        await pumpFan(tester, hand);
+        expect(find.byType(PlayingCardView), findsNWidgets(count));
+        final (top, bottom) = rows(tester, hand);
+        expect(top.length, expectedTop, reason: '$count kağıtta üst sıra');
+        expect(bottom.length, expectedBottom, reason: '$count kağıtta alt sıra');
+      }
+    });
 
-      double topOf(PlayingCard card) => tester
-          .getRect(
-            find.byWidgetPredicate((w) => w is PlayingCardView && w.card == card),
-          )
-          .top;
+    testWidgets('her el büyüklüğünde her kağıda dokunulabilir', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2316);
+      tester.view.devicePixelRatio = 2.75;
+      addTearDown(tester.view.reset);
 
-      expect(topOf(hand[6]), lessThan(topOf(hand.first)));
-      expect(topOf(hand[6]), lessThan(topOf(hand.last)));
+      // Üst sıradaki kağıdın merkezi alt sıranın altında kalırsa dokunuş
+      // yanlış karta gider ve oyuncu o kağıdı atamaz. Her el büyüklüğü için
+      // tek tek denenir.
+      final deck = PlayingCard.fullDeck();
+      for (var n = 1; n <= 13; n++) {
+        final hand = handDisplayOrder(deck.take(n));
+        final tapped = <PlayingCard>[];
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  const Expanded(child: SizedBox.expand()),
+                  HandFan(hand: hand, legalCards: hand, onTap: tapped.add),
+                ],
+              ),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+
+        for (final card in hand) {
+          await tester.tap(cardFinder(card), warnIfMissed: false);
+          await tester.pump();
+        }
+        expect(
+          tapped,
+          hand,
+          reason: '$n kağıtta dokunuş yanlış karta gitti ya da hiç gitmedi',
+        );
+      }
+    });
+
+    testWidgets('atılamayan kağıda dokunmak hiçbir şey yapmaz',
+        (tester) async {
+      final hand = handDisplayOrder(PlayingCard.fullDeck().take(13));
+      final legal = [hand[2], hand[9]];
+      final tapped = <PlayingCard>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                const Expanded(child: SizedBox.expand()),
+                HandFan(hand: hand, legalCards: legal, onTap: tapped.add),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      for (final card in hand) {
+        await tester.tap(cardFinder(card), warnIfMissed: false);
+        await tester.pump();
+      }
+      expect(tapped, legal);
     });
   });
 }
