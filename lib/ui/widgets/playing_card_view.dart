@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../engine/models/card.dart';
@@ -6,10 +8,11 @@ import '../theme.dart';
 
 /// Deste: **Sade Mobil**.
 ///
-/// Bütün mürekkep sol üst köşede toplanır, çünkü yelpazede kartın görünen tek
-/// parçası orasıdır. Pip yok; ortadaki soluk tür simgesi yalnızca masaya
-/// atılan kağıtta işe yarar. Sağ alt köşe indeksi yok: kart hiçbir zaman ters
-/// tutulmuyor.
+/// İndeks **iki köşede** durur: sol üstte ve sağ altta (180° dönük). Yelpazede
+/// kartın görünen tek parçası sol üst köşedir; masaya atılan kağıt başka bir
+/// kağıdın altında kalırsa da diğer köşesinden okunur.
+///
+/// Pip yok; ortadaki soluk tür simgesi kağıdı uzaktan tanıtır.
 ///
 /// Tüm ölçüler [width]'e oranlıdır, böylece aynı widget hem 52 px'lik masa
 /// kağıdı hem 92 px'lik büyük kart olur.
@@ -65,14 +68,13 @@ class PlayingCardView extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // Soluk tür simgesi: masadaki kağıdı uzaktan tanımak için.
-            Positioned(
-              right: width * 0.06,
-              bottom: -width * 0.06,
+            // Soluk tür simgesi: masadaki kağıdı uzaktan tanımak için. Ortada
+            // durur, iki köşedeki indekslere yer bırakır.
+            Center(
               child: Text(
                 card.suit.symbol,
                 style: TextStyle(
-                  fontSize: width * 0.56,
+                  fontSize: width * 0.5,
                   height: 1,
                   color: color.withValues(alpha: 0.16),
                 ),
@@ -81,28 +83,14 @@ class PlayingCardView extends StatelessWidget {
             Positioned(
               left: width * 0.07,
               top: width * 0.02,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: width * 0.34,
-                      height: 1,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -width * 0.015,
-                      color: color,
-                    ),
-                  ),
-                  Text(
-                    card.suit.symbol,
-                    style: TextStyle(
-                      fontSize: width * 0.2,
-                      height: 1.05,
-                      color: color,
-                    ),
-                  ),
-                ],
+              child: _corner(color, label),
+            ),
+            Positioned(
+              right: width * 0.07,
+              bottom: width * 0.02,
+              child: Transform.rotate(
+                angle: math.pi,
+                child: _corner(color, label),
               ),
             ),
           ],
@@ -110,6 +98,28 @@ class PlayingCardView extends StatelessWidget {
       ),
     );
   }
+
+  /// Köşe indeksi: değer ve altında tür simgesi.
+  Widget _corner(Color color, String label) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: width * 0.34,
+              height: 1,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -width * 0.015,
+              color: color,
+            ),
+          ),
+          Text(
+            card.suit.symbol,
+            style: TextStyle(fontSize: width * 0.2, height: 1.05, color: color),
+          ),
+        ],
+      );
 }
 
 /// Kapalı kağıt: koyu yeşil yüz, pirinç ince çerçeve, ortada koz simgesi.
