@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
+import '../../engine/models/game_state.dart';
 
 import '../strings.dart';
 import '../theme.dart';
@@ -14,6 +18,7 @@ class SeatBadge extends StatelessWidget {
     required this.isDealer,
     required this.isTurn,
     this.thinking = false,
+    this.dealProgress = 1,
     super.key,
   });
 
@@ -27,6 +32,9 @@ class SeatBadge extends StatelessWidget {
   final bool isTurn;
   final bool thinking;
 
+  /// Dağıtım ilerlemesi (0–1); deste dağıtıldıkça büyür.
+  final double dealProgress;
+
   @override
   Widget build(BuildContext context) => Column(
         mainAxisSize: MainAxisSize.min,
@@ -35,7 +43,10 @@ class SeatBadge extends StatelessWidget {
 
   Widget _backStack() {
     const width = 26.0;
-    final shown = cardsInHand.clamp(0, 8);
+    final dealt = dealProgress >= 1
+        ? cardsInHand
+        : (GameState.tricksPerRound * dealProgress).floor();
+    final shown = math.min(cardsInHand, dealt).clamp(0, 8);
     return SizedBox(
       width: width + (shown <= 1 ? 0 : (shown - 1) * 7),
       height: width * PlayingCardView.aspect,

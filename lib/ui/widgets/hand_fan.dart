@@ -61,6 +61,7 @@ class HandFan extends StatelessWidget {
     required this.onTap,
     this.enabled = true,
     this.turkishIndices = false,
+    this.dealProgress = 1,
     super.key,
   });
 
@@ -69,6 +70,10 @@ class HandFan extends StatelessWidget {
   final ValueChanged<PlayingCard> onTap;
   final bool enabled;
   final bool turkishIndices;
+
+  /// Dağıtım animasyonunun ilerlemesi (0–1). Kağıtlar soldan sağa, sırayla
+  /// masadan gelip yerine oturur. 1 ise animasyon yok, hepsi yerinde.
+  final double dealProgress;
 
   static const double _maxCardWidth = 88;
 
@@ -87,6 +92,9 @@ class HandFan extends StatelessWidget {
 
   /// Bir sıranın ucundaki kağıdın eğimi.
   static const double _maxAngle = 10 * math.pi / 180;
+
+  /// Dağıtılan kağıdın masadan ele kadar kat ettiği yol.
+  static const double _dealTravel = 120;
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +133,8 @@ class HandFan extends StatelessWidget {
                 _row(
                   context,
                   cards.take(topCount).toList(),
+                  offset: 0,
+                  total: cards.length,
                   cardWidth: cardWidth,
                   step: step,
                   bottom: rowGap,
@@ -132,6 +142,8 @@ class HandFan extends StatelessWidget {
               _row(
                 context,
                 cards.skip(topCount).toList(),
+                offset: topCount,
+                total: cards.length,
                 cardWidth: cardWidth,
                 step: step,
                 bottom: 0,
@@ -147,6 +159,8 @@ class HandFan extends StatelessWidget {
   Widget _row(
     BuildContext context,
     List<PlayingCard> cards, {
+    required int offset,
+    required int total,
     required double cardWidth,
     required double step,
     required double bottom,
@@ -162,11 +176,29 @@ class HandFan extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             for (var i = 0; i < cards.length; i++)
-              _fanCard(context, cards[i], i, cards.length, cardWidth, step),
+              _fanCard(
+                context,
+                cards[i],
+                i,
+                cards.length,
+                cardWidth,
+                step,
+                _dealT(offset + i, total),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  /// [index] numaralı kağıdın kendi giriş animasyonundaki ilerlemesi.
+  ///
+  /// Her kağıt dağıtımın 1/[total]'i kadar sürede yerine oturur; sıradaki
+  /// kağıt bir öncekinin hemen ardından gelir.
+  double _dealT(int index, int total) {
+    if (dealProgress >= 1) return 1;
+    final t = dealProgress * total - index;
+    return t.clamp(0.0, 1.0);
   }
 
   Widget _fanCard(
@@ -176,6 +208,7 @@ class HandFan extends StatelessWidget {
     int rowLength,
     double cardWidth,
     double step,
+    double dealT,
   ) {
     final isLegal = enabled && legalCards.contains(card);
 
@@ -185,6 +218,9 @@ class HandFan extends StatelessWidget {
     final angle = t * _maxAngle;
     final drop = t * t * _arcDrop;
 
+    // Dağıtım: kağıt masadan gelip yerine oturur.
+    final eased = Curves.easeOutCubic.transform(dealT);
+
     // Kağıt oynandıkça sıralar yeniden dizilir; kalan kartlar kayarak gider.
     return AnimatedPositioned(
       key: ValueKey(card.code),
@@ -192,17 +228,26 @@ class HandFan extends StatelessWidget {
       curve: Curves.easeOutCubic,
       left: i * step,
       bottom: (isLegal ? _lift : 0) + (_arcDrop - drop),
-      child: Transform.rotate(
-        angle: angle,
-        alignment: Alignment.bottomCenter,
-        child: GestureDetector(
-          onTap: isLegal ? () => onTap(card) : null,
-          behavior: HitTestBehavior.opaque,
-          child: PlayingCardView(
-            card: card,
-            width: cardWidth,
-            dimmed: enabled && !isLegal,
-            trShortNames: turkishIndices,
+      child: Transform.translate(
+        offset: Offset(0, -(1 - eased) * _dealTravel),
+        child: Transform.scale(
+          scale: 0.86 + 0.14 * eased,
+          child: Opacity(
+            opacity: eased,
+            child: Transform.rotate(
+              angle: angle,
+              alignment: Alignment.bottomCenter,
+              child: GestureDetector(
+                onTap: isLegal ? () => onTap(card) : null,
+                behavior: HitTestBehavior.opaque,
+                child: PlayingCardView(
+                  card: card,
+                  width: cardWidth,
+                  dimmed: enabled && !isLegal,
+                  trShortNames: turkishIndices,
+                ),
+              ),
+            ),
           ),
         ),
       ),

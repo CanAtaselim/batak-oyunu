@@ -21,12 +21,18 @@ class GameScreen extends ConsumerStatefulWidget {
   ConsumerState<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends ConsumerState<GameScreen> {
+class _GameScreenState extends ConsumerState<GameScreen>
+    with SingleTickerProviderStateMixin {
   late final AppLifecycleListener _lifecycle;
+
+  /// Dağıtım animasyonunun saati. 0'dan 1'e giderken kağıtlar tek tek yerine
+  /// oturur; motor bu sırada beklemededir (GameSession.dealing).
+  late final AnimationController _deal;
 
   @override
   void initState() {
     super.initState();
+    _deal = AnimationController(vsync: this, value: 1);
     // Arka plana alınınca bekleyen bot zamanlayıcıları iptal edilir.
     _lifecycle = AppLifecycleListener(
       onHide: () => ref.read(gameControllerProvider.notifier).pause(),
@@ -37,11 +43,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // Kayıtlı oyun ekrana geldiyse botlar kaldığı yerden devam eder.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(gameControllerProvider.notifier).resumeSaved();
+      if (ref.read(gameControllerProvider)?.dealing ?? false) _startDeal();
     });
+  }
+
+  void _startDeal() {
+    _deal
+      ..duration = anim(context, ref.read(settingsProvider).tempo.dealMs)
+      ..forward(from: 0);
   }
 
   @override
   void dispose() {
+    _deal.dispose();
     _lifecycle.dispose();
     super.dispose();
   }
@@ -51,6 +65,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final session = ref.watch(gameControllerProvider);
     final settings = ref.watch(settingsProvider);
     final controller = ref.read(gameControllerProvider.notifier);
+
+    // Yeni dağıtım başladığında saati sıfırdan çalıştır.
+    ref.listen<GameSession?>(gameControllerProvider, (previous, next) {
+      final started = next != null &&
+          next.dealing &&
+          (previous == null ||
+              !previous.dealing ||
+              previous.game.roundIndex != next.game.roundIndex);
+      if (started) _startDeal();
+    });
 
     if (session == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -79,7 +103,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               Column(
                 children: [
                   _TopBar(game: game, onLeave: () => _confirmLeave(context)),
-                  Expanded(child: _Table(session: session, settings: settings)),
+                  Expanded(
+                    child: AnimatedBuilder(
+                      animation: _deal,
+                      builder: (context, _) => _Table(
+                        session: session,
+                        settings: settings,
+                        dealProgress: _deal.value,
+                      ),
+                    ),
+                  ),
                   // Tahmin panelini yelpazenin üstüne koyuyoruz: oyuncu tahmin
                   // verirken kendi elini görmek zorunda.
                   if (session.humanCanBid)
@@ -87,7 +120,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       offset: const Offset(0, 0.25),
                       child: BidPanel(bids: game.bids, onBid: controller.placeBid),
                     ),
-                  _MyHand(session: session, settings: settings),
+                  AnimatedBuilder(
+                    animation: _deal,
+                    builder: (context, _) => _MyHand(
+                      session: session,
+                      settings: settings,
+                      dealProgress: _deal.value,
+                    ),
+                  ),
                 ],
               ),
               if (showScores && session.resolvingTrick == null)
@@ -200,10 +240,15 @@ class _TopBar extends StatelessWidget {
 
 /// Üç bot ve ortadaki el.
 class _Table extends StatelessWidget {
-  const _Table({required this.session, required this.settings});
+  const _Table({
+    required this.session,
+    required this.settings,
+    this.dealProgress = 1,
+  });
 
   final GameSession session;
   final Settings settings;
+  final double dealProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -230,17 +275,25 @@ class _Table extends StatelessWidget {
         bid: game.bids[seat],
         taken: game.tricksTaken[seat],
         isDealer: game.dealer == seat,
-        isTurn: game.turn == seat && session.resolvingTrick == null,
+        isTurn: game.turn == seat &&
+            session.resolvingTrick == null &&
+            !session.dealing,
         thinking: session.botThinking && game.turn == seat,
+        dealProgress: dealProgress,
       );
 }
 
 /// İnsanın yelpazesi.
 class _MyHand extends ConsumerWidget {
-  const _MyHand({required this.session, required this.settings});
+  const _MyHand({
+    required this.session,
+    required this.settings,
+    this.dealProgress = 1,
+  });
 
   final GameSession session;
   final Settings settings;
+  final double dealProgress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -253,6 +306,7 @@ class _MyHand extends ConsumerWidget {
         legalCards: controller.humanLegalCards,
         enabled: session.humanCanPlay,
         turkishIndices: settings.turkishIndices,
+        dealProgress: dealProgress,
         onTap: controller.playCard,
       ),
     );

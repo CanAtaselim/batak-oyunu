@@ -42,6 +42,10 @@ class TrickView extends StatelessWidget {
   static const _angles = <int, double>{0: 0.03, 1: 0.09, 2: -0.04, 3: -0.09};
 
   /// Koltuğun masaya göre yönü; hem giriş hem toplama animasyonu bunu kullanır.
+  /// Kağıdın sahibinin önünden masaya kat ettiği yol. İnsanın eli masadan
+  /// daha uzakta olduğu için onunki daha uzun.
+  static const _travel = <int, double>{0: 190, 1: 130, 2: 130, 3: 130};
+
   static const _dirs = <int, Offset>{
     0: Offset(0, 1),
     1: Offset(1, 0),
@@ -57,6 +61,8 @@ class TrickView extends StatelessWidget {
       width: cardWidth * 3.1,
       height: height * 2.3,
       child: Stack(
+        // Kağıt masanın dışından gelir; yol boyunca kırpılmamalı.
+        clipBehavior: Clip.none,
         children: [
           // Atılma sırası çizim sırasıdır: son atılan kağıt en üstte kalır.
           for (final play in trick.plays)
@@ -65,6 +71,7 @@ class TrickView extends StatelessWidget {
               child: _TrickCard(
                 key: ValueKey(play.card.code),
                 from: _dirs[play.seat]!,
+                travel: _travel[play.seat]!,
                 angle: _angles[play.seat]!,
                 isWinner: winner == play.seat,
                 collectTo: collectDir,
@@ -86,6 +93,7 @@ class TrickView extends StatelessWidget {
 class _TrickCard extends StatefulWidget {
   const _TrickCard({
     required this.from,
+    required this.travel,
     required this.angle,
     required this.isWinner,
     required this.collectTo,
@@ -94,6 +102,10 @@ class _TrickCard extends StatefulWidget {
   });
 
   final Offset from;
+
+  /// Kağıdın sahibinin önünden masaya kat ettiği yol.
+  final double travel;
+
   final double angle;
   final bool isWinner;
   final Offset? collectTo;
@@ -111,13 +123,13 @@ class _TrickCardState extends State<_TrickCard>
   void initState() {
     super.initState();
     _enter = AnimationController(
-      duration: const Duration(milliseconds: 210),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     // Süre build'de MediaQuery'den okunamaz; ilk çerçevede ayarlanır.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _enter.duration = anim(context, 210);
+      _enter.duration = anim(context, 300);
       _enter.forward();
     });
   }
@@ -136,9 +148,12 @@ class _TrickCardState extends State<_TrickCard>
       builder: (context, child) {
         final t = Curves.easeOutCubic.transform(_enter.value);
         return Transform.translate(
-          // Kağıt sahibinin yönünden içeri kayar.
-          offset: widget.from * (1 - t) * 34,
-          child: Opacity(opacity: 0.25 + 0.75 * t, child: child),
+          // Kağıt sahibinin önünden masaya doğru gelir.
+          offset: widget.from * (1 - t) * widget.travel,
+          child: Transform.scale(
+            scale: 0.88 + 0.12 * t,
+            child: Opacity(opacity: (0.2 + 1.6 * t).clamp(0.0, 1.0), child: child),
+          ),
         );
       },
       child: AnimatedSlide(

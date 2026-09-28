@@ -22,6 +22,7 @@ final class GameSession {
     this.resolvingTrick,
     this.botThinking = false,
     this.collecting = false,
+    this.dealing = false,
   });
 
   final GameState game;
@@ -35,18 +36,25 @@ final class GameSession {
   /// El toplanıyor: kağıtlar kazananın önüne süzülüyor. Yalnızca sunum.
   final bool collecting;
 
+  /// Kağıtlar dağıtılıyor. Tahmin turu bu bitmeden başlamaz. Yalnızca sunum;
+  /// motor dağıtımı çoktan yapmıştır.
+  final bool dealing;
+
   /// Masada gösterilecek el: toplanmayı bekleyen varsa o, yoksa güncel el.
   Trick get visibleTrick => resolvingTrick ?? game.trick;
 
   /// İnsan şu an kağıt atabilir mi?
   bool get humanCanPlay =>
+      !dealing &&
       resolvingTrick == null &&
       game.phase == Phase.playing &&
       game.turn == GameState.humanSeat;
 
   /// İnsan şu an tahmin söyleyebilir mi?
   bool get humanCanBid =>
-      game.phase == Phase.bidding && game.turn == GameState.humanSeat;
+      !dealing &&
+      game.phase == Phase.bidding &&
+      game.turn == GameState.humanSeat;
 
   GameSession copyWith({
     GameState? game,
@@ -54,6 +62,7 @@ final class GameSession {
     bool clearResolving = false,
     bool? botThinking,
     bool? collecting,
+    bool? dealing,
   }) =>
       GameSession(
         game: game ?? this.game,
@@ -61,6 +70,7 @@ final class GameSession {
             clearResolving ? null : (resolvingTrick ?? this.resolvingTrick),
         botThinking: botThinking ?? this.botThinking,
         collecting: clearResolving ? false : (collecting ?? this.collecting),
+        dealing: dealing ?? this.dealing,
       );
 }
 
@@ -152,7 +162,10 @@ class GameController extends Notifier<GameSession?> {
     _save = SaveGame(config: config, seed: gameSeed, actions: const []);
     _runId++;
     _paused = false;
-    state = GameSession(game: _engine.newGame(config, gameSeed));
+    state = GameSession(
+      game: _engine.newGame(config, gameSeed),
+      dealing: true,
+    );
     _persist();
     _pump();
   }
@@ -218,6 +231,13 @@ class GameController extends Notifier<GameSession?> {
         final session = state;
         if (session == null) return;
 
+        // Kağıtlar dağıtılıyor: animasyon bitene kadar kimse oynamaz.
+        if (session.dealing) {
+          if (!await _wait(_tempo.dealMs, runId)) return;
+          state = state!.copyWith(dealing: false);
+          continue;
+        }
+
         // Tamamlanmış el masada duruyor: bekle, kazananın önüne topla, temizle.
         if (session.resolvingTrick != null) {
           final collectMs = _collectMs;
@@ -270,6 +290,8 @@ class GameController extends Notifier<GameSession?> {
       game: after,
       resolvingTrick: trickJustFinished ? after.lastTrick : null,
       botThinking: false,
+      // Yeni oyun eli dağıtıldı: önce dağıtım animasyonu oynar.
+      dealing: after.roundIndex > before.roundIndex,
     );
     _save = _save?.withAction(action);
     _persist();

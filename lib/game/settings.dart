@@ -5,15 +5,18 @@ import '../engine/models/game_config.dart';
 
 /// Bot kağıt atışı ve el toplandıktan sonraki bekleme süreleri.
 enum Tempo {
-  slow('slow', 1200, 1500),
-  normal('normal', 700, 1000),
-  fast('fast', 300, 500);
+  slow('slow', 1200, 1500, 3200),
+  normal('normal', 700, 1000, 2300),
+  fast('fast', 300, 500, 1300);
 
-  const Tempo(this.code, this.botMs, this.trickMs);
+  const Tempo(this.code, this.botMs, this.trickMs, this.dealMs);
 
   final String code;
   final int botMs;
   final int trickMs;
+
+  /// 52 kağıdın tamamının dağıtılma süresi.
+  final int dealMs;
 
   static Tempo fromCode(String? code) =>
       Tempo.values.firstWhere((t) => t.code == code, orElse: () => Tempo.normal);
