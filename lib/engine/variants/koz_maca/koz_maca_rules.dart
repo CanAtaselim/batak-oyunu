@@ -42,6 +42,12 @@ final class KozMacaRules implements VariantRules {
     final led = table.first.suit;
     final sameSuit = hand.where((c) => c.suit == led).toList();
     if (sameSuit.isNotEmpty) {
+      // El kozla kesildiyse yükseltme zorunluluğu kalkar: el artık kozdadır,
+      // açılan türden hiçbir kağıt eli alamaz.
+      final trumped =
+          led != Suit.spades && table.any((c) => c.suit == Suit.spades);
+      if (trumped) return sameSuit;
+
       final topLed =
           table.where((c) => c.suit == led).map((c) => c.rank).reduce(max);
       final higher = sameSuit.where((c) => c.rank > topLed).toList();

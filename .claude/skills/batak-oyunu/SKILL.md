@@ -372,15 +372,25 @@ kuralın doğal bir sonucudur. Bunun için ayrı bir kural yazma.
 Sırayla bakılır, ilk uyan kural geçerlidir:
 
 1. **Elinde `led` türünden kağıt varsa** o türden atmak zorundasın:
-   - `led` türünden, table'daki o türün en büyüğünden **daha büyük** kağıtların varsa → sadece onlar.
-   - Yoksa → `led` türünden herhangi biri.
-   - Bu kural, el kozla kesilmiş olsa bile aynen uygulanır.
+   - **El kozla kesilmişse** (table'da maça var ve `led` maça değil) → `led` türünden
+     **herhangi biri**. Yükseltme zorunluluğu yoktur: el artık kozdadır, o türden hiçbir kağıt
+     eli alamaz, dolayısıyla büyütmenin bir anlamı kalmaz.
+   - **Kesilmemişse:** `led` türünden, table'daki o türün en büyüğünden **daha büyük** kağıtların
+     varsa → sadece onlar. Yoksa → `led` türünden herhangi biri.
+
+   > 28.09.2026'da düzeltildi. Önceden "el kozla kesilmiş olsa bile yükseltme zorunludur"
+   > yazıyordu; bu yanlıştı ve oyuncuyu kesilmiş elde boşuna büyük kağıt harcamaya zorluyordu.
 2. **`led` türünden kağıdın yoksa ama maçan varsa** maça atmak zorundasın:
    - Table'da maça varsa ve ondan **büyük** maçan varsa → sadece o büyük maçalar (üstten kesmek zorunlu).
    - Aksi halde → herhangi bir maça.
 3. **Ne `led` türünden ne de maçadan kağıdın varsa** → her kağıt.
 
-`led == ♠` olduğunda kural 1 maça için çalışır, kural 2 hiç devreye girmez.
+`led == ♠` olduğunda kural 1 maça için çalışır, kural 2 hiç devreye girmez. Maça açılmış bir elde
+"kesilme" diye bir şey olmadığı için **yükseltme zorunluluğu sürer**: elinde masadaki en büyük
+maçayı geçen bir maça varsa onu atmak zorundasın.
+
+Kural 2'deki üstten kesme zorunluluğu bu değişiklikten etkilenmez: renk yokken koz atıyorsan ve
+masadaki kozu geçebiliyorsan yine geçmek zorundasın (A9.2).
 
 ### A4.3 Referans uygulama
 
@@ -397,6 +407,11 @@ List<Card> legalMoves(List<Card> hand, List<Card> table, bool spadesBroken) {
   final led = table.first.suit;
   final sameSuit = hand.where((c) => c.suit == led).toList();
   if (sameSuit.isNotEmpty) {
+    // El kozla kesildiyse yükseltme zorunluluğu kalkar.
+    final trumped =
+        led != Suit.spades && table.any((c) => c.suit == Suit.spades);
+    if (trumped) return sameSuit;
+
     final topLed = table.where((c) => c.suit == led).map((c) => c.rank).reduce(max);
     final higher = sameSuit.where((c) => c.rank > topLed).toList();
     return higher.isNotEmpty ? higher : sameSuit;
@@ -486,13 +501,20 @@ Kağıt gösterimi: `♠A`, `♥10`, `♣7`. Bu senaryolar birebir unit test ola
 | L3 | true | — | ♠A ♥3 | ♠A ♥3 |
 | L4 | false | ♣6 | ♣3 ♣7 ♣8 ♥K | ♣7 ♣8 |
 | L5 | false | ♣6 ♣8 | ♣2 ♣4 ♠K | ♣2 ♣4 |
-| L6 | true | ♥7 ♠4 ♥9 | ♥6 ♥10 ♠5 | ♥10 |
+| L6 | true | ♥7 ♠4 ♥9 | ♥6 ♥10 ♠5 | ♥6 ♥10 |
 | L7 | true | ♦8 ♠4 ♦10 | ♠2 ♠6 ♣K | ♠6 |
 | L8 | true | ♦8 ♠9 | ♠2 ♠6 ♣K | ♠2 ♠6 |
 | L9 | false | ♦8 | ♣K ♥2 | ♣K ♥2 |
 | L10 | true | ♠5 | ♠3 ♠J ♥A | ♠J |
 | L11 | true | ♠Q | ♠3 ♠J ♥A | ♠3 ♠J |
 | L12 | false | ♦8 | ♠2 ♣K | ♠2 |
+| L13 | true | ♦8 ♠2 | ♦3 ♦A ♣K | ♦3 ♦A |
+| L14 | false | ♦8 ♦10 | ♦3 ♦A ♣K | ♦A |
+| L15 | true | ♠5 ♠9 | ♠3 ♠J ♥A | ♠J |
+
+L6 ve L13 kesilmiş eli gösterir: renge uymak zorunlu, yükseltmek değil. L14 kesilmemiş elde
+yükseltmenin sürdüğünü, L15 ise maça açıldığında (kesilme olamayacağı için) yine sürdüğünü
+gösterir.
 
 ### A10.2 Eli kim alır
 

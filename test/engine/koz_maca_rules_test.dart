@@ -34,7 +34,8 @@ void main() {
     // Renge uyarken büyütme zorunluluğu.
     check('L4', spadesBroken: false, table: 'C6', hand: 'C3 C7 C8 HK', expected: 'C7 C8');
     check('L5', spadesBroken: false, table: 'C6 C8', hand: 'C2 C4 SK', expected: 'C2 C4');
-    check('L6', spadesBroken: true, table: 'H7 S4 H9', hand: 'H6 H10 S5', expected: 'H10');
+    // El kozla kesildi: renge uymak zorunlu, yükseltmek değil.
+    check('L6', spadesBroken: true, table: 'H7 S4 H9', hand: 'H6 H10 S5', expected: 'H6 H10');
 
     // Renk yokken koz zorunlu, yerdeki kozu geçebiliyorsan geçmek zorunlu.
     check('L7', spadesBroken: true, table: 'D8 S4 D10', hand: 'S2 S6 CK', expected: 'S6');
@@ -47,6 +48,12 @@ void main() {
 
     // Elde tek koz varsa koz atmak zorunlu; koz kırılmamış olması engel değil.
     check('L12', spadesBroken: false, table: 'D8', hand: 'S2 CK', expected: 'S2');
+
+    // Kesilmiş elde yükseltme zorunluluğu yok; kesilmemişte sürüyor.
+    check('L13', spadesBroken: true, table: 'D8 S2', hand: 'D3 DA CK', expected: 'D3 DA');
+    check('L14', spadesBroken: false, table: 'D8 D10', hand: 'D3 DA CK', expected: 'DA');
+    // Maça açıldığında kesilme olamaz: yükseltme sürer.
+    check('L15', spadesBroken: true, table: 'S5 S9', hand: 'S3 SJ HA', expected: 'SJ');
   });
 
   group('A10.2 eli kim alır', () {
