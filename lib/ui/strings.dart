@@ -56,6 +56,13 @@ abstract final class Str {
   static const tempoSlow = 'Yavaş';
   static const tempoNormal = 'Normal';
   static const tempoFast = 'Hızlı';
+  static const settingsDeck = 'Deste ve masa';
+  static const settingsDeckDesc = 'Oyun sürerken de değiştirebilirsin';
+  static const deckLocked = 'Kilitli';
+  static const deckAdsLeft = '%d reklam kaldı';
+  static const deckPrice = '%d jeton';
+  static const settingsBoard = 'Masa';
+  static const settingsBoardDesc = 'Renkleri seçili desteden gelir';
   static const settingsIndices = 'Türkçe kart harfleri';
   static const settingsIndicesDesc = 'J · Q · K · A yerine V · K · P · A';
   static const settingsNote = 'Ayarlar yeni oyunda geçerli olur.';

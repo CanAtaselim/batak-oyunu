@@ -1,0 +1,145 @@
+import 'package:flutter/painting.dart';
+
+import '../../engine/models/card.dart';
+import 'board_art.dart';
+
+/// Bir kart temasının nasıl açıldığı.
+///
+/// Şimdilik bütün temalar [FreeUnlock]; altyapı ileride reklamla ya da parayla
+/// açılacak desteler için hazır. Bir desteyi kilitlemek için [DeckTheme.all]
+/// içindeki `unlock` değerini değiştirmek yeterlidir.
+sealed class UnlockRule {
+  const UnlockRule();
+}
+
+/// Herkese açık deste.
+final class FreeUnlock extends UnlockRule {
+  const FreeUnlock();
+}
+
+/// [count] reklam izlenince açılır.
+final class AdsUnlock extends UnlockRule {
+  const AdsUnlock(this.count);
+
+  final int count;
+}
+
+/// [price] jeton karşılığı açılır.
+final class CoinsUnlock extends UnlockRule {
+  const CoinsUnlock(this.price);
+
+  final int price;
+}
+
+enum DeckId { klasik, osmanli, sehir, ejder }
+
+/// Varsayılan tema; widget'ların öntanımlı değeri.
+const DeckTheme klasikDeck = DeckTheme(
+  id: DeckId.klasik,
+  name: 'Klasik',
+  description: 'Sade kağıtlar, çuha masa',
+  unlock: FreeUnlock(),
+  drawn: true,
+  board: BoardPalette(
+    light: Color(0xFF23503F),
+    base: Color(0xFF17402F),
+    dark: Color(0xFF0A1C14),
+    accent: Color(0xFFD7A254),
+  ),
+);
+
+/// Kart destesi ve ona eşlik eden masa.
+///
+/// Desteler görsel dosyalardan gelir (`assets/decks/<id>/<kağıt kodu>.webp`);
+/// yalnızca `klasik` uygulamanın içinde çizilir. Kağıt kodları motorunkiyle
+/// aynıdır (SA, H10, DK…), bu yüzden dosya adı doğrudan koddan üretilir.
+final class DeckTheme {
+  const DeckTheme({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.unlock,
+    required this.board,
+    this.drawn = false,
+  });
+
+  final DeckId id;
+  final String name;
+  final String description;
+  final UnlockRule unlock;
+
+  /// Görsel dosya yerine uygulamanın içinde çizilen deste.
+  final bool drawn;
+
+  /// Bu destenin masasının renkleri. Kağıtlar açık renk olduğu için masa
+  /// koyu tutulur; kontrast kağıttan gelir.
+  final BoardPalette board;
+
+  /// Kart oranı (boy / en). Çizilen deste 64×92, görseller 500×700.
+  double get aspect => drawn ? 92 / 64 : 7 / 5;
+
+  String cardAsset(PlayingCard card) => 'assets/decks/${id.name}/${card.code}.webp';
+
+  String get backAsset => 'assets/decks/${id.name}/back.webp';
+
+  /// Bu destenin masası. Çizilen destede masa da çizimdir.
+  String get boardAsset => 'assets/boards/${id.name}.webp';
+
+  /// Sırasıyla: çizilen klasik deste, sonra görsel desteler.
+  ///
+  /// Yeni deste eklemek: görselleri `assets/decks/<id>/` altına koy, [DeckId]
+  /// içine adını yaz ve buraya bir satır ekle. Başka hiçbir yere dokunmak
+  /// gerekmez.
+  static const List<DeckTheme> all = [
+    klasikDeck,
+    DeckTheme(
+      id: DeckId.osmanli,
+      name: 'Osmanlı',
+      description: 'Lale ve hat motifleri',
+      // İleride örneğin: AdsUnlock(5)
+      unlock: FreeUnlock(),
+      board: BoardPalette(
+        light: Color(0xFF24405C),
+        base: Color(0xFF152A3D),
+        dark: Color(0xFF0A1622),
+        accent: Color(0xFFC9A227),
+      ),
+    ),
+    DeckTheme(
+      id: DeckId.sehir,
+      name: 'Şehir Muhafızları',
+      description: 'Çizgi roman kahramanları',
+      // İleride örneğin: CoinsUnlock(500)
+      unlock: FreeUnlock(),
+      board: BoardPalette(
+        light: Color(0xFF2B3C57),
+        base: Color(0xFF1A2436),
+        dark: Color(0xFF0B1220),
+        accent: Color(0xFF7FA8C9),
+      ),
+    ),
+    DeckTheme(
+      id: DeckId.ejder,
+      name: 'Ejder Diyarı',
+      description: 'Ejderler ve şövalyeler',
+      unlock: FreeUnlock(),
+      board: BoardPalette(
+        light: Color(0xFF2D4032),
+        base: Color(0xFF1A2A20),
+        dark: Color(0xFF0B1710),
+        accent: Color(0xFFC09A4E),
+      ),
+    ),
+  ];
+
+  static DeckTheme byId(DeckId id) =>
+      all.firstWhere((theme) => theme.id == id);
+
+  static DeckTheme fromCode(String? code) => all.firstWhere(
+        (theme) => theme.id.name == code,
+        orElse: () => all.first,
+      );
+
+  @override
+  String toString() => 'DeckTheme(${id.name})';
+}

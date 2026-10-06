@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../engine/models/card.dart';
 import '../../engine/models/suit.dart';
+import '../cards/deck_theme.dart';
 import '../theme.dart';
 
 /// Deste: **Sade Mobil**.
@@ -20,12 +21,14 @@ class PlayingCardView extends StatelessWidget {
   const PlayingCardView({
     required this.card,
     required this.width,
+    this.theme = klasikDeck,
     this.dimmed = false,
     this.trShortNames = false,
     super.key,
   });
 
-  /// Kart oranı: 64 × 92.
+  /// Çizilen destenin kart oranı: 64 × 92. Görsel desteler 5:7'dir; ölçü
+  /// [DeckTheme.aspect]'ten alınır.
   static const double aspect = 92 / 64;
 
   /// Karartma tülünün anahtarı; testler bununla arıyor.
@@ -34,6 +37,9 @@ class PlayingCardView extends StatelessWidget {
   final PlayingCard card;
   final double width;
 
+  /// Deste ve masa teması. Görsel destelerde kağıt dosyadan çizilir.
+  final DeckTheme theme;
+
   /// Atılamayan kağıtlar kararır. Saydamlık kullanılmaz: saydam kart alttaki
   /// kağıdı göstererek yelpazeyi iç içe geçmiş gibi gösteriyordu.
   final bool dimmed;
@@ -41,7 +47,7 @@ class PlayingCardView extends StatelessWidget {
   /// İndeks harfleri Türkçe: V (Vale), K (Kız), P (Papaz), A (As).
   final bool trShortNames;
 
-  double get height => width * aspect;
+  double get height => width * theme.aspect;
 
   static Color colorOf(Suit suit) =>
       suit == Suit.hearts || suit == Suit.diamonds
@@ -50,6 +56,7 @@ class PlayingCardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!theme.drawn) return _assetCard(theme.cardAsset(card));
     final color = colorOf(card.suit);
     final label = trShortNames ? card.rankCodeTr : card.rankCode;
     return Container(
@@ -107,6 +114,37 @@ class PlayingCardView extends StatelessWidget {
     );
   }
 
+  /// Görsel desteden gelen kağıt. Dosyanın köşeleri zaten şeffaf ve yuvarlak
+  /// olduğu için arkasına zemin çizilmez.
+  Widget _assetCard(String asset) {
+    final radius = BorderRadius.circular(width * 0.07);
+    return SizedBox(
+      width: width,
+      height: height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: const [
+            BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Stack(
+            children: [
+              Image.asset(asset, width: width, height: height, fit: BoxFit.fill),
+              if (dimmed)
+                const Positioned.fill(
+                  key: ValueKey(dimKey),
+                  child: ColoredBox(color: Color(0x52000A06)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Köşe indeksi: değer ve altında tür simgesi.
   Widget _corner(Color color, String label) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,13 +170,42 @@ class PlayingCardView extends StatelessWidget {
 
 /// Kapalı kağıt: koyu yeşil yüz, pirinç ince çerçeve, ortada koz simgesi.
 class CardBackView extends StatelessWidget {
-  const CardBackView({required this.width, super.key});
+  const CardBackView({
+    required this.width,
+    this.theme = klasikDeck,
+    super.key,
+  });
 
   final double width;
+  final DeckTheme theme;
 
   @override
   Widget build(BuildContext context) {
-    final height = width * PlayingCardView.aspect;
+    final height = width * theme.aspect;
+    if (!theme.drawn) {
+      final radius = BorderRadius.circular(width * 0.07);
+      return SizedBox(
+        width: width,
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: const [
+              BoxShadow(color: Color(0x33000000), blurRadius: 5, offset: Offset(0, 2)),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: radius,
+            child: Image.asset(
+              theme.backAsset,
+              width: width,
+              height: height,
+              fit: BoxFit.fill,
+            ),
+          ),
+        ),
+      );
+    }
     return Container(
       width: width,
       height: height,

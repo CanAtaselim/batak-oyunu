@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../engine/models/card.dart';
 import '../../engine/models/game_state.dart';
 import '../../game/game_controller.dart';
+import '../../game/settings.dart';
 import '../strings.dart';
 import '../theme.dart';
+import '../cards/deck_theme.dart';
 import '../widgets/playing_card_view.dart';
 import 'game_screen.dart';
 import 'settings_screen.dart';
@@ -38,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const _Logo(),
+                    _Logo(deck: ref.watch(settingsProvider).deck),
                     const SizedBox(height: 28),
                     const Text(
                       Str.appName,
@@ -116,7 +118,9 @@ class HomeScreen extends ConsumerWidget {
 
 /// Üç kağıtlık küçük bir yelpaze; destenin ne olduğunu ana ekranda gösterir.
 class _Logo extends StatelessWidget {
-  const _Logo();
+  const _Logo({required this.deck});
+
+  final DeckTheme deck;
 
   static const _cards = [
     ('SA', -0.22, -26.0, 0.0),
@@ -138,6 +142,7 @@ class _Logo extends StatelessWidget {
                   child: PlayingCardView(
                     card: PlayingCard.parse(code),
                     width: 62,
+                    theme: deck,
                   ),
                 ),
               ),

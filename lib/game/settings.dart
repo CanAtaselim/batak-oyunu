@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../engine/models/game_config.dart';
+import '../ui/cards/board_art.dart';
+import '../ui/cards/deck_theme.dart';
 
 /// Bot kağıt atışı ve el toplandıktan sonraki bekleme süreleri.
 enum Tempo {
@@ -30,6 +32,8 @@ final class Settings {
     this.botLevel = BotLevel.medium,
     this.tempo = Tempo.normal,
     this.turkishIndices = false,
+    this.deck = klasikDeck,
+    this.boardStyle = BoardStyle.halka,
   });
 
   final int yan;
@@ -37,8 +41,15 @@ final class Settings {
   final BotLevel botLevel;
   final Tempo tempo;
 
-  /// Kart indeksleri V/K/P/A mı, J/Q/K/A mı.
+  /// Kart indeksleri V/K/P/A mı, J/Q/K/A mı. Yalnızca çizilen destede geçerli;
+  /// görsel destelerin harfleri dosyaya işlenmiştir.
   final bool turkishIndices;
+
+  /// Seçili deste.
+  final DeckTheme deck;
+
+  /// Masanın üslubu. Desteden bağımsızdır; renkleri destenin paletinden gelir.
+  final BoardStyle boardStyle;
 
   GameConfig get config => GameConfig(
         yan: yan,
@@ -52,6 +63,8 @@ final class Settings {
     BotLevel? botLevel,
     Tempo? tempo,
     bool? turkishIndices,
+    DeckTheme? deck,
+    BoardStyle? boardStyle,
   }) =>
       Settings(
         yan: yan ?? this.yan,
@@ -59,6 +72,8 @@ final class Settings {
         botLevel: botLevel ?? this.botLevel,
         tempo: tempo ?? this.tempo,
         turkishIndices: turkishIndices ?? this.turkishIndices,
+        deck: deck ?? this.deck,
+        boardStyle: boardStyle ?? this.boardStyle,
       );
 }
 
@@ -76,6 +91,8 @@ class SettingsNotifier extends Notifier<Settings> {
   static const _kBots = 'botLevel';
   static const _kTempo = 'tempo';
   static const _kTrIndices = 'turkishIndices';
+  static const _kDeck = 'deck';
+  static const _kBoard = 'boardStyle';
 
   SharedPreferences get _prefs => ref.read(sharedPrefsProvider);
 
@@ -88,6 +105,8 @@ class SettingsNotifier extends Notifier<Settings> {
       botLevel: BotLevel.fromCode(p.getString(_kBots) ?? 'medium'),
       tempo: Tempo.fromCode(p.getString(_kTempo)),
       turkishIndices: p.getBool(_kTrIndices) ?? false,
+      deck: DeckTheme.fromCode(p.getString(_kDeck)),
+      boardStyle: BoardStyle.fromCode(p.getString(_kBoard)),
     );
   }
 
@@ -109,6 +128,17 @@ class SettingsNotifier extends Notifier<Settings> {
   Future<void> setTempo(Tempo value) async {
     state = state.copyWith(tempo: value);
     await _prefs.setString(_kTempo, value.code);
+  }
+
+  /// Deste anında değişir; süren oyunu etkilemez, yalnızca görünümü.
+  Future<void> setDeck(DeckTheme value) async {
+    state = state.copyWith(deck: value);
+    await _prefs.setString(_kDeck, value.id.name);
+  }
+
+  Future<void> setBoardStyle(BoardStyle value) async {
+    state = state.copyWith(boardStyle: value);
+    await _prefs.setString(_kBoard, value.code);
   }
 
   Future<void> setTurkishIndices(bool value) async {

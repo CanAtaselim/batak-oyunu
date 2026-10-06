@@ -562,11 +562,86 @@ gösterir.
 | F4 | 13 elden sonra | Alınan ellerin toplamı = 13 |
 
 
+
+---
+
+# Bölüm D — Desteler ve masalar
+
+28.09.2026'da onaylandı. Bu bölüm yalnızca görünümü anlatır; kural motoru
+destelerden habersizdir ve onlara hiçbir yerde bağlı değildir.
+
+## D1. Deste nedir
+
+Bir **deste** (`DeckTheme`), 52 kağıdın görüntüsü ve ona eşlik eden masadır.
+İkisi birlikte seçilir: deste değişince masa da değişir.
+
+| Kod | Ad | Kaynak |
+|---|---|---|
+| `klasik` | Klasik | Uygulamanın içinde çizilir, görsel dosya kullanmaz |
+| `osmanli` | Osmanlı | `assets/decks/osmanli/` + `assets/boards/osmanli.webp` |
+| `sehir` | Şehir Muhafızları | `assets/decks/sehir/` |
+| `ejder` | Ejder Diyarı | `assets/decks/ejder/` |
+
+Dosya adları **kağıt koduyla birebir aynıdır** (A bölümündeki kayıt formatı):
+`SA.webp`, `H10.webp`, `DK.webp`… Arka yüz `back.webp`. Bu yüzden yol koddan
+doğrudan üretilir, eşleme tablosu tutulmaz:
+
+```dart
+String cardAsset(PlayingCard card) => 'assets/decks/${id.name}/${card.code}.webp';
+```
+
+Ölçüler: çizilen deste 64×92, görsel desteler 500×700 (5:7). Kart oranı
+`DeckTheme.aspect`'ten okunur; yerleşim hesapları (yelpaze, masa, künye) bu
+değeri kullanır, sabit bir orana güvenmez.
+
+Görseller `assets/` altında durur; vektör asılları ve üretici betikler
+`tool/gorseller/` içindedir ve uygulamaya paketlenmez.
+
+## D2. Yeni deste ekleme
+
+1. Görselleri `assets/decks/<id>/` altına koy (52 kağıt + `back.webp`),
+   masayı `assets/boards/<id>.webp` yap.
+2. `pubspec.yaml`'a `assets/decks/<id>/` satırını ekle.
+3. `DeckId`'ye adını, `DeckTheme.all`'a bir satır ekle.
+
+Başka hiçbir yere dokunmak gerekmez. `deck_assets_test.dart` yeni destenin
+bütün dosyalarını otomatik olarak denetler; eksik kağıt testte düşer.
+
+## D3. Deste açma altyapısı
+
+Her destenin bir **açılma kuralı** (`UnlockRule`) vardır:
+
+| Kural | Anlamı |
+|---|---|
+| `FreeUnlock()` | Herkese açık |
+| `AdsUnlock(n)` | `n` reklam izlenince açılır |
+| `CoinsUnlock(n)` | `n` jeton karşılığı açılır |
+
+**Şu an bütün desteler `FreeUnlock`.** Bir desteyi kilitlemek için
+`DeckTheme.all` içindeki tek satırı değiştirmek yeterlidir; arayüz kilidi,
+ilerlemeyi ve fiyatı kendiliğinden gösterir.
+
+Mülkiyet `DeckStore`'da durur ve `shared_preferences`'a yazılır: açılmış
+desteler, deste başına izlenen reklam sayısı ve jeton bakiyesi.
+
+```dart
+Future<bool> adWatched(DeckTheme deck);  // sayaç dolduysa true
+Future<bool> buy(DeckTheme deck);        // parası yettiyse true
+Future<void> addCoins(int amount);
+```
+
+**Reklam SDK'sı ve ödeme bu sınıfın dışındadır.** `DeckStore` yalnızca sonucu
+işler: reklam izlendiğinde `adWatched`, satın alma başarılı olduğunda `buy`
+çağrılır. Entegrasyon eklendiğinde oyunun geri kalanı değişmez.
+
+Yöntemler desteyi **id yerine nesne olarak** alır; kural destenin kendisinde
+durur, böylece kayıt tablosuna bağımlı kalmadan sınanabilir.
+
 ---
 
 ## Yol haritası (bu skill'e eklenecek bölümler)
 
-- Bölüm B: İhaleli (tekli)
-- Bölüm C: Eşli İhale
-- Bölüm D: Gömmeli
+- İhaleli (tekli), Eşli İhale, Gömmeli varyantları
+- Zor bot (bilgi takibi + Monte Carlo)
+- Reklam ve ödeme entegrasyonu (altyapısı Bölüm D'de hazır)
 - UI tasarımı: masa yerleşimi, kart animasyonları, puan tablosu ekranı

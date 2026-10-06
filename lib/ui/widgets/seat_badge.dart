@@ -6,6 +6,7 @@ import '../../engine/models/game_state.dart';
 
 import '../strings.dart';
 import '../theme.dart';
+import '../cards/deck_theme.dart';
 import 'playing_card_view.dart';
 
 /// Bir botun masadaki künyesi: adı, tahmini, aldığı el ve elindeki kağıt sayısı.
@@ -19,6 +20,7 @@ class SeatBadge extends StatelessWidget {
     required this.isTurn,
     this.thinking = false,
     this.dealProgress = 1,
+    this.deck = klasikDeck,
     super.key,
   });
 
@@ -35,6 +37,9 @@ class SeatBadge extends StatelessWidget {
   /// Dağıtım ilerlemesi (0–1); deste dağıtıldıkça büyür.
   final double dealProgress;
 
+  /// Seçili deste; kapalı kağıdın sırtı buradan gelir.
+  final DeckTheme deck;
+
   @override
   Widget build(BuildContext context) => Column(
         mainAxisSize: MainAxisSize.min,
@@ -49,11 +54,14 @@ class SeatBadge extends StatelessWidget {
     final shown = math.min(cardsInHand, dealt).clamp(0, 8);
     return SizedBox(
       width: width + (shown <= 1 ? 0 : (shown - 1) * 7),
-      height: width * PlayingCardView.aspect,
+      height: width * deck.aspect,
       child: Stack(
         children: [
           for (var i = 0; i < shown; i++)
-            Positioned(left: i * 7, child: const CardBackView(width: width)),
+            Positioned(
+              left: i * 7,
+              child: CardBackView(width: width, theme: deck),
+            ),
         ],
       ),
     );

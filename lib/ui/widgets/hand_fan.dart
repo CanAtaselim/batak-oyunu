@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../engine/models/card.dart';
 import '../../engine/models/suit.dart';
 import '../theme.dart';
+import '../cards/deck_theme.dart';
 import 'playing_card_view.dart';
 
 /// Eldeki kağıtların ekrandaki sırası: **renkler dönüşümlü** dizilir, yani iki
@@ -61,6 +62,7 @@ class HandFan extends StatelessWidget {
     required this.onTap,
     this.enabled = true,
     this.turkishIndices = false,
+    this.deck = klasikDeck,
     this.dealProgress = 1,
     super.key,
   });
@@ -70,6 +72,9 @@ class HandFan extends StatelessWidget {
   final ValueChanged<PlayingCard> onTap;
   final bool enabled;
   final bool turkishIndices;
+
+  /// Seçili deste.
+  final DeckTheme deck;
 
   /// Dağıtım animasyonunun ilerlemesi (0–1). Kağıtlar soldan sağa, sırayla
   /// masadan gelip yerine oturur. 1 ise animasyon yok, hepsi yerinde.
@@ -112,7 +117,7 @@ class HandFan extends StatelessWidget {
         final widest = bottomCount < 1 ? 1 : bottomCount;
         final fitWidth = available / (1 + _overlap * (widest - 1));
         final cardWidth = math.min(_maxCardWidth, fitWidth);
-        final cardHeight = cardWidth * PlayingCardView.aspect;
+        final cardHeight = cardWidth * deck.aspect;
         final step = cardWidth * _overlap;
         // Üst sıra, alt sıranın en yüksek kağıdını yarı boyu kadar aşmalı:
         // yoksa üst kağıdın merkezi alta gömülür ve dokunuş oraya gitmez.
@@ -171,7 +176,7 @@ class HandFan extends StatelessWidget {
       bottom: bottom,
       child: SizedBox(
         width: width,
-        height: cardWidth * PlayingCardView.aspect + _lift + _arcDrop,
+        height: cardWidth * deck.aspect + _lift + _arcDrop,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -243,6 +248,7 @@ class HandFan extends StatelessWidget {
                 child: PlayingCardView(
                   card: card,
                   width: cardWidth,
+                  theme: deck,
                   dimmed: enabled && !isLegal,
                   trShortNames: turkishIndices,
                 ),

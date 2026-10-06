@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../engine/models/trick.dart';
 import '../theme.dart';
+import '../cards/deck_theme.dart';
 import 'playing_card_view.dart';
 
 /// Masanın ortası: her koltuğun attığı kağıt kendi yönünde durur.
@@ -17,6 +18,7 @@ class TrickView extends StatelessWidget {
     this.winner,
     this.collecting = false,
     this.cardWidth = 54,
+    this.deck = klasikDeck,
     this.turkishIndices = false,
     super.key,
   });
@@ -30,6 +32,7 @@ class TrickView extends StatelessWidget {
   final bool collecting;
 
   final double cardWidth;
+  final DeckTheme deck;
   final bool turkishIndices;
 
   static const _slots = <int, Alignment>{
@@ -55,7 +58,7 @@ class TrickView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = cardWidth * PlayingCardView.aspect;
+    final height = cardWidth * deck.aspect;
     final collectDir = collecting && winner != null ? _dirs[winner]! : null;
     return SizedBox(
       width: cardWidth * 3.1,
@@ -78,6 +81,7 @@ class TrickView extends StatelessWidget {
                 child: PlayingCardView(
                   card: play.card,
                   width: cardWidth,
+                  theme: deck,
                   trShortNames: turkishIndices,
                 ),
               ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../engine/models/game_state.dart';
 import '../../game/game_controller.dart';
 import '../../game/settings.dart';
+import '../cards/board_art.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../widgets/appear.dart';
@@ -87,62 +88,86 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final showScores =
         game.phase == Phase.roundOver || game.phase == Phase.gameOver;
 
+    // Masa: seçilen üslup çizilir. "Destenin masası" seçiliyse ve o destenin
+    // bir görseli varsa onun yerine görsel serilir.
+    final useImage =
+        settings.boardStyle == BoardStyle.gorsel && !settings.deck.drawn;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.2),
-            radius: 1.1,
-            colors: [BatakColors.feltLight, BatakColors.felt, BatakColors.feltDark],
-            stops: [0, 0.5, 1],
-          ),
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          image: useImage
+              ? DecorationImage(
+                  image: AssetImage(settings.deck.boardAsset),
+                  fit: BoxFit.cover,
+                )
+              : null,
         ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  _TopBar(game: game, onLeave: () => _confirmLeave(context)),
-                  Expanded(
-                    child: AnimatedBuilder(
-                      animation: _deal,
-                      builder: (context, _) => _Table(
-                        session: session,
-                        settings: settings,
-                        dealProgress: _deal.value,
-                      ),
-                    ),
-                  ),
-                  // Tahmin panelini yelpazenin üstüne koyuyoruz: oyuncu tahmin
-                  // verirken kendi elini görmek zorunda.
-                  if (session.humanCanBid)
-                    Appear(
-                      offset: const Offset(0, 0.25),
-                      child: BidPanel(bids: game.bids, onBid: controller.placeBid),
-                    ),
-                  AnimatedBuilder(
-                    animation: _deal,
-                    builder: (context, _) => _MyHand(
-                      session: session,
-                      settings: settings,
-                      dealProgress: _deal.value,
-                    ),
-                  ),
-                ],
-              ),
-              if (showScores && session.resolvingTrick == null)
-                Positioned.fill(
-                  child: ScoreSheet(
-                    game: game,
-                    onNextRound: controller.nextRound,
-                    onHome: () {
-                      controller.abandon();
-                      Navigator.of(context).maybePop();
-                    },
+        child: Stack(
+          children: [
+            if (!useImage)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: BoardPainter(
+                    style: settings.boardStyle,
+                    palette: settings.deck.board,
                   ),
                 ),
-            ],
-          ),
+              ),
+            SafeArea(
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      _TopBar(
+                        game: game,
+                        onLeave: () => _confirmLeave(context),
+                      ),
+                      Expanded(
+                        child: AnimatedBuilder(
+                          animation: _deal,
+                          builder: (context, _) => _Table(
+                            session: session,
+                            settings: settings,
+                            dealProgress: _deal.value,
+                          ),
+                        ),
+                      ),
+                      // Tahmin panelini yelpazenin üstüne koyuyoruz: oyuncu
+                      // tahmin verirken kendi elini görmek zorunda.
+                      if (session.humanCanBid)
+                        Appear(
+                          offset: const Offset(0, 0.25),
+                          child: BidPanel(
+                            bids: game.bids,
+                            onBid: controller.placeBid,
+                          ),
+                        ),
+                      AnimatedBuilder(
+                        animation: _deal,
+                        builder: (context, _) => _MyHand(
+                          session: session,
+                          settings: settings,
+                          dealProgress: _deal.value,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (showScores && session.resolvingTrick == null)
+                    Positioned.fill(
+                      child: ScoreSheet(
+                        game: game,
+                        onNextRound: controller.nextRound,
+                        onHome: () {
+                          controller.abandon();
+                          Navigator.of(context).maybePop();
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -263,6 +288,7 @@ class _Table extends StatelessWidget {
           trick: session.visibleTrick,
           winner: session.resolvingTrick?.winner,
           collecting: session.collecting,
+          deck: settings.deck,
           turkishIndices: settings.turkishIndices,
         ),
       ],
@@ -280,6 +306,7 @@ class _Table extends StatelessWidget {
             !session.dealing,
         thinking: session.botThinking && game.turn == seat,
         dealProgress: dealProgress,
+        deck: settings.deck,
       );
 }
 
@@ -306,6 +333,7 @@ class _MyHand extends ConsumerWidget {
         legalCards: controller.humanLegalCards,
         enabled: session.humanCanPlay,
         turkishIndices: settings.turkishIndices,
+        deck: settings.deck,
         dealProgress: dealProgress,
         onTap: controller.playCard,
       ),
