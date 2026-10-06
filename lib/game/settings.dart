@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +25,21 @@ enum Tempo {
       Tempo.values.firstWhere((t) => t.code == code, orElse: () => Tempo.normal);
 }
 
+/// Arayüz teması. Varsayılan telefonun kendi ayarını izler.
+enum ThemeChoice {
+  system('system', ThemeMode.system),
+  light('light', ThemeMode.light),
+  dark('dark', ThemeMode.dark);
+
+  const ThemeChoice(this.code, this.mode);
+
+  final String code;
+  final ThemeMode mode;
+
+  static ThemeChoice fromCode(String? code) => ThemeChoice.values
+      .firstWhere((t) => t.code == code, orElse: () => ThemeChoice.system);
+}
+
 /// Kalıcı ayarlar. Oyun ortasında değiştirilirse yeni oyunda geçerli olur.
 final class Settings {
   const Settings({
@@ -34,6 +50,7 @@ final class Settings {
     this.turkishIndices = false,
     this.deck = klasikDeck,
     this.boardStyle = BoardStyle.halka,
+    this.theme = ThemeChoice.system,
   });
 
   final int yan;
@@ -51,6 +68,9 @@ final class Settings {
   /// Masanın üslubu. Desteden bağımsızdır; renkleri destenin paletinden gelir.
   final BoardStyle boardStyle;
 
+  /// Açık/koyu tema seçimi. Masa paleti de buna uyar.
+  final ThemeChoice theme;
+
   GameConfig get config => GameConfig(
         yan: yan,
         roundCount: roundCount,
@@ -65,6 +85,7 @@ final class Settings {
     bool? turkishIndices,
     DeckTheme? deck,
     BoardStyle? boardStyle,
+    ThemeChoice? theme,
   }) =>
       Settings(
         yan: yan ?? this.yan,
@@ -74,6 +95,7 @@ final class Settings {
         turkishIndices: turkishIndices ?? this.turkishIndices,
         deck: deck ?? this.deck,
         boardStyle: boardStyle ?? this.boardStyle,
+        theme: theme ?? this.theme,
       );
 }
 
@@ -93,6 +115,7 @@ class SettingsNotifier extends Notifier<Settings> {
   static const _kTrIndices = 'turkishIndices';
   static const _kDeck = 'deck';
   static const _kBoard = 'boardStyle';
+  static const _kTheme = 'theme';
 
   SharedPreferences get _prefs => ref.read(sharedPrefsProvider);
 
@@ -107,6 +130,7 @@ class SettingsNotifier extends Notifier<Settings> {
       turkishIndices: p.getBool(_kTrIndices) ?? false,
       deck: DeckTheme.fromCode(p.getString(_kDeck)),
       boardStyle: BoardStyle.fromCode(p.getString(_kBoard)),
+      theme: ThemeChoice.fromCode(p.getString(_kTheme)),
     );
   }
 
@@ -139,6 +163,12 @@ class SettingsNotifier extends Notifier<Settings> {
   Future<void> setBoardStyle(BoardStyle value) async {
     state = state.copyWith(boardStyle: value);
     await _prefs.setString(_kBoard, value.code);
+  }
+
+  /// Tema anında değişir; süren oyunu etkilemez.
+  Future<void> setTheme(ThemeChoice value) async {
+    state = state.copyWith(theme: value);
+    await _prefs.setString(_kTheme, value.code);
   }
 
   Future<void> setTurkishIndices(bool value) async {

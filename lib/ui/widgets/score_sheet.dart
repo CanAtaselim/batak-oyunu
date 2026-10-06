@@ -24,19 +24,21 @@ class ScoreSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final roundScores = game.lastRoundScores ?? const [0, 0, 0, 0];
     final winners = game.winners;
+    final pal = context.pal;
     return ColoredBox(
-      color: const Color(0xCC061410),
+      color: pal.scrim,
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Appear(
+            scaleFrom: 0.94,
             child: Container(
             constraints: const BoxConstraints(maxWidth: 420),
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
             decoration: BoxDecoration(
-              color: const Color(0xFF16241E),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x33FFFFFF)),
+              color: pal.panel,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: pal.pop,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -48,7 +50,7 @@ class ScoreSheet extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 14),
-                _table(roundScores),
+                _table(context, roundScores),
                 if (_gameOver) ...[
                   const SizedBox(height: 14),
                   Text(
@@ -56,9 +58,9 @@ class ScoreSheet extends StatelessWidget {
                       winners.length > 1 ? Str.winnerTieLine : Str.winnerLine,
                       [winners.map((s) => Str.seatNames[s]).join(', ')],
                     ),
-                    style: const TextStyle(
-                      color: BatakColors.brass,
-                      fontWeight: FontWeight.w700,
+                    style: TextStyle(
+                      color: pal.accentDeep,
+                      fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
                   ),
@@ -80,11 +82,12 @@ class ScoreSheet extends StatelessWidget {
     );
   }
 
-  Widget _table(List<int> roundScores) {
-    const headerStyle = TextStyle(
+  Widget _table(BuildContext context, List<int> roundScores) {
+    final pal = context.pal;
+    final headerStyle = TextStyle(
       fontSize: 11,
       letterSpacing: 0.4,
-      color: BatakColors.onFeltDim,
+      color: pal.inkDim,
       fontWeight: FontWeight.w600,
     );
     return Table(
@@ -96,7 +99,7 @@ class ScoreSheet extends StatelessWidget {
         4: FlexColumnWidth(1.3),
       },
       children: [
-        const TableRow(
+        TableRow(
           children: [
             Padding(
               padding: EdgeInsets.only(bottom: 8),
@@ -111,7 +114,7 @@ class ScoreSheet extends StatelessWidget {
         for (var seat = 0; seat < GameState.seatCount; seat++)
           TableRow(
             decoration: seat == GameState.humanSeat
-                ? const BoxDecoration(color: Color(0x14D7A254))
+                ? BoxDecoration(color: pal.accent.withValues(alpha: 0.22))
                 : null,
             children: [
               Padding(
@@ -130,7 +133,7 @@ class ScoreSheet extends StatelessWidget {
               _cell(
                 _signed(roundScores[seat]),
                 align: TextAlign.right,
-                color: roundScores[seat] < 0 ? BatakColors.bad : BatakColors.good,
+                color: roundScores[seat] < 0 ? pal.bad : pal.good,
               ),
               _cell(
                 '${game.scores[seat]}',

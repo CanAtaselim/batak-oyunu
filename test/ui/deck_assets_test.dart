@@ -85,24 +85,40 @@ void main() {
   });
 
   group('masa', () {
-    test('her destenin bir masa paleti var ve koyudan açığa sıralı', () {
+    test('her destenin açık ve koyu masası var, kenardan ortaya aydınlanır', () {
       for (final deck in DeckTheme.all) {
-        final board = deck.board;
-        // Kağıtlar açık renk; masa koyu olmalı ki kontrast kağıttan gelsin.
+        for (final brightness in Brightness.values) {
+          final board = deck.board(brightness);
+          final where = '${deck.name}/${brightness.name}';
+          expect(
+            board.dark.computeLuminance(),
+            lessThan(board.base.computeLuminance()),
+            reason: '$where: kenar ortadan açık',
+          );
+          expect(
+            board.base.computeLuminance(),
+            lessThan(board.light.computeLuminance()),
+            reason: '$where: orta ışıktan açık',
+          );
+        }
+
+        // Açık tema masası pastel ama kağıt beyazından belirgin biçimde
+        // koyu; yoksa kağıtlar masaya karışır.
+        final light = deck.board(Brightness.light);
+        expect(light.isLight, isTrue, reason: '${deck.name}: açık masa koyu');
         expect(
-          board.dark.computeLuminance(),
-          lessThan(board.base.computeLuminance()),
-          reason: '${deck.name}: kenar ortadan açık',
+          light.base.computeLuminance(),
+          inInclusiveRange(0.2, 0.55),
+          reason: '${deck.name}: açık masa ya fazla soluk ya fazla koyu',
         );
+
+        // Koyu tema masası gerçekten koyu.
+        final dark = deck.board(Brightness.dark);
+        expect(dark.isLight, isFalse, reason: '${deck.name}: koyu masa açık');
         expect(
-          board.base.computeLuminance(),
-          lessThan(board.light.computeLuminance()),
-          reason: '${deck.name}: orta ışıktan açık',
-        );
-        expect(
-          board.light.computeLuminance(),
+          dark.light.computeLuminance(),
           lessThan(0.25),
-          reason: '${deck.name}: masa fazla açık, kağıtlar kaybolur',
+          reason: '${deck.name}: koyu masa fazla açık',
         );
       }
     });
@@ -110,10 +126,12 @@ void main() {
     testWidgets('her üslup her boyutta hatasız çizilir', (tester) async {
       for (final style in BoardStyle.values) {
         for (final size in [const Size(74, 104), const Size(1080, 2316)]) {
-          final recorder = PictureRecorder();
-          BoardPainter(style: style, palette: klasikDeck.board)
-              .paint(Canvas(recorder), size);
-          recorder.endRecording();
+          for (final brightness in Brightness.values) {
+            final recorder = PictureRecorder();
+            BoardPainter(style: style, palette: klasikDeck.board(brightness))
+                .paint(Canvas(recorder), size);
+            recorder.endRecording();
+          }
         }
       }
     });

@@ -1,3 +1,5 @@
+import 'dart:ui' show Brightness;
+
 import 'package:flutter/painting.dart';
 
 import '../../engine/models/card.dart';
@@ -37,14 +39,20 @@ enum DeckId { klasik, osmanli, sehir, ejder }
 const DeckTheme klasikDeck = DeckTheme(
   id: DeckId.klasik,
   name: 'Klasik',
-  description: 'Sade kağıtlar, çuha masa',
+  description: 'Sade kağıtlar, adaçayı masa',
   unlock: FreeUnlock(),
   drawn: true,
-  board: BoardPalette(
-    light: Color(0xFF23503F),
-    base: Color(0xFF17402F),
-    dark: Color(0xFF0A1C14),
-    accent: Color(0xFFD7A254),
+  boardLight: BoardPalette(
+    light: Color(0xFFA9C9B5),
+    base: Color(0xFF8DB49E),
+    dark: Color(0xFF6E9A84),
+    accent: Color(0xFF3F7159),
+  ),
+  boardDark: BoardPalette(
+    light: Color(0xFF2C4537),
+    base: Color(0xFF1E3227),
+    dark: Color(0xFF101E17),
+    accent: Color(0xFF8FB9A2),
   ),
 );
 
@@ -59,7 +67,8 @@ final class DeckTheme {
     required this.name,
     required this.description,
     required this.unlock,
-    required this.board,
+    required this.boardLight,
+    required this.boardDark,
     this.drawn = false,
   });
 
@@ -71,9 +80,16 @@ final class DeckTheme {
   /// Görsel dosya yerine uygulamanın içinde çizilen deste.
   final bool drawn;
 
-  /// Bu destenin masasının renkleri. Kağıtlar açık renk olduğu için masa
-  /// koyu tutulur; kontrast kağıttan gelir.
-  final BoardPalette board;
+  /// Bu destenin masası, açık temada. Pastel ama kağıt beyazından belirgin
+  /// biçimde koyu: kontrast masadan değil kağıttan gelir.
+  final BoardPalette boardLight;
+
+  /// Aynı masanın koyu temadaki hali.
+  final BoardPalette boardDark;
+
+  /// Temanın parlaklığına uyan masa paleti.
+  BoardPalette board(Brightness brightness) =>
+      brightness == Brightness.dark ? boardDark : boardLight;
 
   /// Kart oranı (boy / en). Çizilen deste 64×92, görseller 500×700.
   double get aspect => drawn ? 92 / 64 : 7 / 5;
@@ -98,7 +114,13 @@ final class DeckTheme {
       description: 'Lale ve hat motifleri',
       // İleride örneğin: AdsUnlock(5)
       unlock: FreeUnlock(),
-      board: BoardPalette(
+      boardLight: BoardPalette(
+        light: Color(0xFFAEC3D6),
+        base: Color(0xFF90AAC2),
+        dark: Color(0xFF7090AB),
+        accent: Color(0xFF8A6A1E),
+      ),
+      boardDark: BoardPalette(
         light: Color(0xFF24405C),
         base: Color(0xFF152A3D),
         dark: Color(0xFF0A1622),
@@ -111,7 +133,13 @@ final class DeckTheme {
       description: 'Çizgi roman kahramanları',
       // İleride örneğin: CoinsUnlock(500)
       unlock: FreeUnlock(),
-      board: BoardPalette(
+      boardLight: BoardPalette(
+        light: Color(0xFFB9C3D2),
+        base: Color(0xFF9CA8BC),
+        dark: Color(0xFF7C8AA1),
+        accent: Color(0xFF3F5E7D),
+      ),
+      boardDark: BoardPalette(
         light: Color(0xFF2B3C57),
         base: Color(0xFF1A2436),
         dark: Color(0xFF0B1220),
@@ -123,7 +151,13 @@ final class DeckTheme {
       name: 'Ejder Diyarı',
       description: 'Ejderler ve şövalyeler',
       unlock: FreeUnlock(),
-      board: BoardPalette(
+      boardLight: BoardPalette(
+        light: Color(0xFFAFC4AE),
+        base: Color(0xFF93AC93),
+        dark: Color(0xFF748D76),
+        accent: Color(0xFF7A5F24),
+      ),
+      boardDark: BoardPalette(
         light: Color(0xFF2D4032),
         base: Color(0xFF1A2A20),
         dark: Color(0xFF0B1710),

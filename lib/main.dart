@@ -26,14 +26,16 @@ Future<void> main() async {
   );
 }
 
-class BatakApp extends StatelessWidget {
+class BatakApp extends ConsumerWidget {
   const BatakApp({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) => MaterialApp(
         title: Str.appName,
         debugShowCheckedModeBanner: false,
-        theme: buildTheme(),
+        theme: buildTheme(Brightness.light),
+        darkTheme: buildTheme(Brightness.dark),
+        themeMode: ref.watch(settingsProvider).theme.mode,
         home: const HomeScreen(),
       );
 }

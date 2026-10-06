@@ -9,7 +9,14 @@ import '../theme.dart';
 import '../cards/deck_theme.dart';
 import 'playing_card_view.dart';
 
-/// Bir botun masadaki künyesi: adı, tahmini, aldığı el ve elindeki kağıt sayısı.
+/// Bir koltuğun masadaki künyesi: adı, elindeki kağıtlar ve **kaç el aldığı**.
+///
+/// Alınan el sayısı oyunun en çok bakılan bilgisidir, o yüzden künyenin
+/// merkezinde büyük durur: `aldığı / tahmini`. Tahmin söylenmemişse tahmin
+/// yerine tire yazar. Oyuncu tahminini doldurduğunda sayı vurgu rengine döner.
+///
+/// Masanın rengi desteye ve temaya göre değişir; künye her zaman panel
+/// renginde bir pildir, böylece okunurluk masadan bağımsızdır.
 class SeatBadge extends StatelessWidget {
   const SeatBadge({
     required this.seat,
@@ -21,6 +28,7 @@ class SeatBadge extends StatelessWidget {
     this.thinking = false,
     this.dealProgress = 1,
     this.deck = klasikDeck,
+    this.showBacks = true,
     super.key,
   });
 
@@ -40,10 +48,17 @@ class SeatBadge extends StatelessWidget {
   /// Seçili deste; kapalı kağıdın sırtı buradan gelir.
   final DeckTheme deck;
 
+  /// Elindeki kağıtların sırtı gösterilsin mi. İnsanın eli zaten yelpazede
+  /// açık durduğu için onun künyesinde gösterilmez.
+  final bool showBacks;
+
   @override
   Widget build(BuildContext context) => Column(
         mainAxisSize: MainAxisSize.min,
-        children: [_backStack(), const SizedBox(height: 6), _info(context)],
+        children: [
+          if (showBacks) ...[_backStack(), const SizedBox(height: 6)],
+          _info(context),
+        ],
       );
 
   Widget _backStack() {
@@ -68,68 +83,104 @@ class SeatBadge extends StatelessWidget {
   }
 
   Widget _info(BuildContext context) {
-    final bidText = bid == null ? Str.waitingBid : '$bid';
+    final pal = context.pal;
+    // Tahminini dolduran oyuncunun sayısı vurgulanır.
+    final filled = bid != null && taken >= bid!;
     return AnimatedContainer(
       duration: anim(context, 200),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(9, 5, 7, 5),
       decoration: BoxDecoration(
-        color: const Color(0x8C081409),
+        color: isTurn ? pal.accent : pal.panel,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: isTurn
-              ? BatakColors.brass.withValues(alpha: 0.85)
-              : Colors.white.withValues(alpha: 0.14),
-          width: isTurn ? 1.4 : 1,
-        ),
+        boxShadow: BatakPalette.onBoardShadow,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             Str.seatNames[seat],
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: BatakColors.onFelt,
+              fontWeight: FontWeight.w800,
+              color: isTurn ? pal.onAccent : pal.ink,
             ),
           ),
           if (isDealer) ...[
             const SizedBox(width: 5),
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: BatakColors.brass,
-                shape: BoxShape.circle,
+            Tooltip(
+              message: Str.dealerBadge,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: pal.blush,
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
           ],
-          const SizedBox(width: 7),
-          // Tahmin söylendiği anda ve el alındıkça sayı yumuşak değişir.
-          AnimatedSwitcher(
-            duration: anim(context, 220),
-            child: Text(
-              '${Str.bidShort}$bidText · ${Str.takenShort}$taken',
-              key: ValueKey('$bidText/$taken'),
-              style: const TextStyle(
-                fontSize: 11,
-                color: BatakColors.onFeltDim,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
           if (thinking) ...[
             const SizedBox(width: 6),
-            const SizedBox(
+            SizedBox(
               width: 9,
               height: 9,
               child: CircularProgressIndicator(
                 strokeWidth: 1.6,
-                color: BatakColors.brass,
+                color: isTurn ? pal.onAccent : pal.accentDeep,
               ),
             ),
           ],
+          const SizedBox(width: 7),
+          _score(context, pal, filled: filled),
         ],
+      ),
+    );
+  }
+
+  /// `aldığı / tahmini` — oyun sırasında en çok bakılan sayı.
+  Widget _score(BuildContext context, BatakPalette pal, {required bool filled}) {
+    final onAccentBg = isTurn;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: onAccentBg
+            ? pal.onAccent.withValues(alpha: 0.12)
+            : pal.surfaceAlt,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: AnimatedSwitcher(
+        duration: anim(context, 220),
+        child: RichText(
+          key: ValueKey('$taken/${bid ?? '-'}'),
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: '$taken',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                  color: filled
+                      ? (onAccentBg ? pal.onAccent : pal.accentDeep)
+                      : (onAccentBg ? pal.onAccent : pal.ink),
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              TextSpan(
+                text: '/${bid ?? Str.noBidShort}',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                  color: onAccentBg
+                      ? pal.onAccent.withValues(alpha: 0.75)
+                      : pal.inkDim,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

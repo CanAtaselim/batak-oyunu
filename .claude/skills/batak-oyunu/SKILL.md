@@ -639,9 +639,133 @@ durur, böylece kayıt tablosuna bağımlı kalmadan sınanabilir.
 
 ---
 
+# Bölüm E — Arayüz ve renk dili
+
+06.10.2026'da kuruldu, aynı gün açık/koyu tema ile genişletildi. Kural motoru
+arayüzden habersizdir; bu bölüm yalnızca görünümü ve ekran davranışını bağlar.
+
+## E1. İki ayrı dünya
+
+Renkler iki gruba ayrılır ve **karıştırılmaz**:
+
+| Dünya | Nerede | Kural |
+|---|---|---|
+| **Arayüz** | ana ekran, ayarlar, pop-up, çip, künye | Temaya bağlı: açık ve koyu iki palet. Masanın rengine bağlı **değil**. |
+| **Kağıt** | kart yüzü, kart sırtı | `BatakColors` içindeki sabitler. Kart fiziksel bir nesnedir; tema değişse de aynı basılmıştır. |
+
+Sebep: masa hem desteyle hem temayla değişir. Masa üstündeki metin masanın
+rengine bağlanırsa her deste × tema kombinasyonu için ayrı okunurluk sorunu
+çıkar. Bu yüzden **masa üstündeki her şey panel renginde bir pildir**: künye,
+üst bar çipi, çıkış düğmesi. Gölgeleri `BatakPalette.onBoardShadow` ile gelir
+ve masadan bağımsızdır.
+
+## E2. Palet
+
+`BatakPalette`, `ThemeExtension<BatakPalette>` olarak temaya takılır ve
+widget'lar `context.pal` ile okur. **Widget içine ham renk yazılmaz.**
+
+İki sabit sürümü vardır: `BatakPalette.light` ve `BatakPalette.dark`.
+
+| Alan | İş |
+|---|---|
+| `surface` / `surfaceAlt` | ekran zemini / ikinci yüzey (seçilmemiş çip, sayı kutusu) |
+| `panel` | pop-up, panel ve masa üstü pillerin zemini |
+| `line` | ince ayrım çizgisi |
+| `accent` / `accentDeep` / `onAccent` | vurgu dolgusu / okunur vurgu tonu / vurgu üstü metin |
+| `blush` `butter` | ikincil pastel vurgular (dağıtan noktası, sıfır uyarısı) |
+| `ink` `inkSoft` `inkDim` | metin, koyudan soluğa |
+| `good` `bad` | puan işareti |
+| `scrim` | pop-up altındaki örtü |
+| `soft` `pop` | panel ve pop-up gölgesi (paletin gölge renginden türer) |
+
+`BatakColors` yalnızca kağıdı taşır: `cardFace`, `cardEdge`, `cardInk`,
+`cardBack`, `cardBackDark`, `red`, `brass`.
+
+`buildTheme(Brightness)` bu paletten bir `ThemeData` kurar ve paleti
+`extensions` ile içine koyar. Düğme, çip, switch, dialog, liste hepsi
+oradan beslenir.
+
+## E3. Tema seçimi
+
+`ThemeChoice { system, light, dark }` ayarlarda durur (`theme` anahtarı) ve
+varsayılanı `system`'dir: telefonun kendi ayarını izler. `MaterialApp`
+`theme` + `darkTheme` + `themeMode` üçlüsüyle kurulur.
+
+Tema geçişi `AnimatedTheme` üzerinden animasyonludur; `BatakPalette.lerp`
+yarıda eski paleti döndürür, bu yüzden paleti ölçen testler `pumpAndSettle`
+ile geçişin bitmesini bekler.
+
+Testler: `test/ui/theme_test.dart`.
+
+## E4. Masa paleti
+
+Her destenin **iki** masası vardır: `boardLight` ve `boardDark`;
+`deck.board(brightness)` temaya uyanı verir. `BoardPalette.isLight`, `base`
+parlaklığı 0.3'ü geçtiğinde doğrudur ve `BoardPainter` buna göre yön
+değiştirir: koyu masada dokuma izi beyaz ve kenar kararması güçlü, açık
+masada iz siyah, kararma hafif, işlemeler daha koyu çizilir.
+
+Sınırlar testle korunur (`test/ui/deck_assets_test.dart`):
+
+- her palette `dark < base < light`;
+- açık masa `isLight` olmalı ve `base` parlaklığı **0.20–0.55** arasında
+  kalmalı — daha soluğunda beyaz kağıt masaya karışır;
+- koyu masada `light` parlaklığı 0.25'in altında kalmalı.
+
+## E5. Masa yerleşimi
+
+- **Üst bar** yalnızca koz ve el/yan bilgisini taşır. Tahmin ve alınan el
+  oradan kaldırıldı; o bilgi koltuğun kendi künyesinde durur.
+- **Künye** (`SeatBadge`) adı, dağıtan noktasını, düşünme göstergesini ve
+  ortada **`aldığı / tahmini`** sayısını gösterir. Tahmin söylenmemişse
+  tahmin yerine tire yazar; oyuncu tahminini doldurunca (`taken >= bid`)
+  sayı `accentDeep` rengine döner. Sırası gelen koltuğun künyesi `accent`
+  dolgusuna geçer.
+- **İnsanın künyesi de masadadır** (alt uçta, `showBacks: false`): kaç el
+  aldığını oyun sırasında görmek gerekir. Eli zaten yelpazede açık olduğu
+  için kapalı kağıt yığını çizilmez.
+- **Ortadaki el** 76 px kart genişliğiyle çizilir; daha küçüğünde telefonda
+  okunmuyordu.
+
+Testler: `test/ui/seat_badge_test.dart`.
+
+## E6. Tahmin pop-up'ı
+
+Tahmin **masanın ortasında açılan bir pop-up**tur, ekrana yapışık bir panel
+değil.
+
+- `BidPanel` masanın kapladığı alanın içine yerleşir (`_BidOverlay`), üst bara
+  ve yelpazeye dokunmaz. **Yelpaze her zaman görünür kalır**: oyuncu tahmin
+  verirken kendi elini görmek zorundadır — bu bir tasarım kuralıdır, test
+  edilir.
+- Altındaki örtü dikey gradyandır; üstte ve altta söner, böylece üst barla ve
+  yelpazeyle arasında sert kesim olmaz. Örtü dokunuşları yutar.
+- Pop-up açıkken **masadaki künyeler söner**: pop-up kenardakilerin üstüne
+  bindiği için yarım görünüyorlardı, bilgileri de zaten pop-up'ın içinde.
+- Sayılar 0–13, iki satırda yedişer. Seçili sayı `accent` dolguya döner ve
+  1.08 ölçeğe büyür.
+- 0 seçilince sıfır bahsinin uyarısı `butter` şeridinde belirir
+  (`AnimatedSize`), başka sayıya geçilince kaybolur.
+- Masadaki diğer tahminler altta `surfaceAlt` pillerde listelenir; tahminler
+  herkese açıktır (A3).
+- Seçim yapılmadan **Söyle** basılamaz. Düğme yazısı sabittir (`Str.bidButton`).
+- Pop-up kartının anahtarı `BidPanel.cardKey`; ölçüm yapan testler panelin dış
+  sınırını değil bu kartı ölçer.
+
+Testler: `test/ui/bid_popup_test.dart`.
+
+## E7. Önizleme aracı
+
+`flutter test tool/preview_ui_test.dart` her ekranı **iki temada** üretir:
+`build/ui_{home,bid,table,settings}_{light,dark}.png`. Test değildir, gözle
+bakmak içindir. Test ortamının yazı tipi metinleri kutu çizer; yerleşim ve
+renk doğrulanabilir, yazı okunmaz.
+
+---
+
 ## Yol haritası (bu skill'e eklenecek bölümler)
 
 - İhaleli (tekli), Eşli İhale, Gömmeli varyantları
 - Zor bot (bilgi takibi + Monte Carlo)
 - Reklam ve ödeme entegrasyonu (altyapısı Bölüm D'de hazır)
-- UI tasarımı: masa yerleşimi, kart animasyonları, puan tablosu ekranı
+- UI tasarımı: kalan ekranların pastel diline taşınması (Bölüm E'de başladı)

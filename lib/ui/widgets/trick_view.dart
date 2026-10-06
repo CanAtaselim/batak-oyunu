@@ -176,10 +176,11 @@ class _TrickCardState extends State<_TrickCard>
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: widget.isWinner && !collecting
-                      ? const [
+                      ? [
                           BoxShadow(
-                            color: Color(0x99D7A254),
-                            blurRadius: 14,
+                            color: context.pal.accentDeep
+                                .withValues(alpha: 0.65),
+                            blurRadius: 16,
                             spreadRadius: 1,
                           ),
                         ]

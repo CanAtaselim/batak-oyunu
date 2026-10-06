@@ -52,7 +52,7 @@ class PlayingCardView extends StatelessWidget {
   static Color colorOf(Suit suit) =>
       suit == Suit.hearts || suit == Suit.diamonds
           ? BatakColors.red
-          : BatakColors.ink;
+          : BatakColors.cardInk;
 
   @override
   Widget build(BuildContext context) {

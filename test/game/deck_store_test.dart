@@ -79,7 +79,8 @@ void main() {
         name: 'Ejder',
         description: '',
         unlock: AdsUnlock(3),
-        board: _testBoard,
+        boardLight: _testBoard,
+      boardDark: _testBoard,
       );
       expect(c.read(deckStoreProvider).isUnlocked(deck), isFalse);
       expect(c.read(deckStoreProvider).adsRemaining(deck), 3);
@@ -103,7 +104,8 @@ void main() {
         name: 'Ejder',
         description: '',
         unlock: AdsUnlock(3),
-        board: _testBoard,
+        boardLight: _testBoard,
+      boardDark: _testBoard,
       );
       for (var i = 0; i < 3; i++) {
         await store.adWatched(deck);
@@ -120,7 +122,8 @@ void main() {
       name: 'Şehir',
       description: '',
       unlock: CoinsUnlock(500),
-      board: _testBoard,
+      boardLight: _testBoard,
+      boardDark: _testBoard,
     );
 
     test('parası yetmezse açılmaz ve jeton eksilmez', () async {
@@ -158,14 +161,16 @@ void main() {
       name: 'Şehir',
       description: '',
       unlock: CoinsUnlock(500),
-      board: _testBoard,
+      boardLight: _testBoard,
+      boardDark: _testBoard,
     );
     const adDeck = DeckTheme(
       id: DeckId.ejder,
       name: 'Ejder',
       description: '',
       unlock: AdsUnlock(3),
-      board: _testBoard,
+      boardLight: _testBoard,
+      boardDark: _testBoard,
     );
     final first = makeContainer();
     final store = first.read(deckStoreProvider.notifier);

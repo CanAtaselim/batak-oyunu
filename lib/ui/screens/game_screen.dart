@@ -92,6 +92,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // bir görseli varsa onun yerine görsel serilir.
     final useImage =
         settings.boardStyle == BoardStyle.gorsel && !settings.deck.drawn;
+    final boardPalette = settings.deck.board(Theme.of(context).brightness);
 
     return Scaffold(
       body: DecoratedBox(
@@ -110,7 +111,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 child: CustomPaint(
                   painter: BoardPainter(
                     style: settings.boardStyle,
-                    palette: settings.deck.board,
+                    palette: boardPalette,
                   ),
                 ),
               ),
@@ -124,25 +125,31 @@ class _GameScreenState extends ConsumerState<GameScreen>
                         onLeave: () => _confirmLeave(context),
                       ),
                       Expanded(
-                        child: AnimatedBuilder(
-                          animation: _deal,
-                          builder: (context, _) => _Table(
-                            session: session,
-                            settings: settings,
-                            dealProgress: _deal.value,
-                          ),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: AnimatedBuilder(
+                                animation: _deal,
+                                builder: (context, _) => _Table(
+                                  session: session,
+                                  settings: settings,
+                                  dealProgress: _deal.value,
+                                ),
+                              ),
+                            ),
+                            // Tahmin pop-up'ı masanın ortasında açılır.
+                            // Yelpazenin üstünü kapatmaz: oyuncu tahmin
+                            // verirken kendi elini görmek zorunda.
+                            if (session.humanCanBid)
+                              Positioned.fill(
+                                child: _BidOverlay(
+                                  bids: game.bids,
+                                  onBid: controller.placeBid,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      // Tahmin panelini yelpazenin üstüne koyuyoruz: oyuncu
-                      // tahmin verirken kendi elini görmek zorunda.
-                      if (session.humanCanBid)
-                        Appear(
-                          offset: const Offset(0, 0.25),
-                          child: BidPanel(
-                            bids: game.bids,
-                            onBid: controller.placeBid,
-                          ),
-                        ),
                       AnimatedBuilder(
                         animation: _deal,
                         builder: (context, _) => _MyHand(
@@ -198,6 +205,43 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 }
 
+/// Tahmin pop-up'ının altındaki örtü: masayı yumuşatır, dokunuşları yutar.
+class _BidOverlay extends StatelessWidget {
+  const _BidOverlay({required this.bids, required this.onBid});
+
+  final List<int?> bids;
+  final ValueChanged<int> onBid;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {},
+        child: DecoratedBox(
+          // Masayı yumuşatan bant. Üstte ve altta söndüğü için üst barla ve
+          // yelpazeyle arasında sert bir kesim görünmez.
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                context.pal.scrim.withValues(alpha: 0),
+                context.pal.scrim,
+                context.pal.scrim,
+                context.pal.scrim.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.16, 0.84, 1],
+            ),
+          ),
+          child: Appear(
+            ms: 240,
+            offset: const Offset(0, 0.04),
+            scaleFrom: 0.93,
+            child: BidPanel(bids: bids, onBid: onBid),
+          ),
+        ),
+      );
+}
+
 /// Koz, kaçıncı el, yan batar ve senin tahmin/alış durumun.
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.game, required this.onLeave});
@@ -207,58 +251,74 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final myBid = game.bids[GameState.humanSeat];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 4, 4),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 6),
       child: Row(
         children: [
-          // Dar ekranda çipler alt satıra kayar; taşma olmaz.
+          // Dar ekranda çipler alt satıra kayar; taşma olmaz. Tahmin ve alınan
+          // el burada değil, koltukların kendi künyesinde durur.
           Expanded(
             child: Wrap(
               spacing: 6,
-              runSpacing: 4,
+              runSpacing: 5,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                _chip('${Str.trump} ♠', accent: true),
-                _chip('${Str.roundLabel} ${game.roundIndex + 1}/'
-                    '${game.config.roundCount} · ${Str.yanLabel} ${game.config.yan}'),
-                _chip('${Str.bidShort}${myBid ?? Str.waitingBid} · '
-                    '${Str.takenShort}${game.tricksTaken[GameState.humanSeat]}'),
+                _chip(context, '${Str.trump} ♠', accent: true),
+                _chip(
+                  context,
+                  '${Str.roundLabel} ${game.roundIndex + 1}/'
+                  '${game.config.roundCount} · ${Str.yanLabel} ${game.config.yan}',
+                ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: onLeave,
-            icon: const Icon(Icons.close_rounded, size: 20),
-            color: BatakColors.onFeltDim,
-            tooltip: Str.abandonGame,
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
+          _LeaveButton(onLeave: onLeave),
         ],
       ),
     );
   }
 
-  Widget _chip(String text, {bool accent = false}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: const Color(0x80081409),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(
-            color: accent
-                ? BatakColors.brass.withValues(alpha: 0.45)
-                : Colors.white.withValues(alpha: 0.16),
-          ),
+  /// Masanın rengi ne olursa olsun okunan pil.
+  Widget _chip(BuildContext context, String text, {bool accent = false}) {
+    final pal = context.pal;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: accent ? pal.accent : pal.panel,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: BatakPalette.onBoardShadow,
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: accent ? FontWeight.w800 : FontWeight.w700,
+          color: accent ? pal.onAccent : pal.inkSoft,
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: accent ? BatakColors.brass : BatakColors.onFelt,
-          ),
+      ),
+    );
+  }
+}
+
+/// Masadan çıkış: üst barın sağ ucundaki yuvarlak düğme.
+class _LeaveButton extends StatelessWidget {
+  const _LeaveButton({required this.onLeave});
+
+  final VoidCallback onLeave;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: context.pal.panel,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: IconButton(
+          onPressed: onLeave,
+          icon: const Icon(Icons.close_rounded, size: 18),
+          color: context.pal.inkSoft,
+          tooltip: Str.abandonGame,
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
         ),
       );
 }
@@ -281,15 +341,45 @@ class _Table extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Align(alignment: Alignment.topCenter, child: _badge(game, 2)),
-        Align(alignment: const Alignment(-0.92, -0.1), child: _badge(game, 3)),
-        Align(alignment: const Alignment(0.92, -0.1), child: _badge(game, 1)),
+        // Tahmin pop-up'ı açıkken künyeler söner: pop-up kenardakilerin üstüne
+        // bindiği için yarım görünürlerdi, bilgileri de zaten pop-up'ta.
+        AnimatedOpacity(
+          opacity: session.humanCanBid ? 0 : 1,
+          duration: anim(context, 220),
+          curve: Curves.easeOut,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Align(alignment: Alignment.topCenter, child: _badge(game, 2)),
+              Align(
+                alignment: const Alignment(-0.92, -0.1),
+                child: _badge(game, 3),
+              ),
+              Align(
+                alignment: const Alignment(0.92, -0.1),
+                child: _badge(game, 1),
+              ),
+            ],
+          ),
+        ),
         TrickView(
           trick: session.visibleTrick,
           winner: session.resolvingTrick?.winner,
           collecting: session.collecting,
+          cardWidth: 76,
           deck: settings.deck,
           turkishIndices: settings.turkishIndices,
+        ),
+        // İnsanın künyesi masanın alt ucunda, botlarınkiyle aynı dilde:
+        // kaç el aldığını oyun sırasında görmek gerekir.
+        Align(
+          alignment: const Alignment(0, 1),
+          child: AnimatedOpacity(
+            opacity: session.humanCanBid ? 0 : 1,
+            duration: anim(context, 220),
+            curve: Curves.easeOut,
+            child: _badge(game, GameState.humanSeat),
+          ),
         ),
       ],
     );
@@ -297,6 +387,7 @@ class _Table extends StatelessWidget {
 
   Widget _badge(GameState game, int seat) => SeatBadge(
         seat: seat,
+        showBacks: seat != GameState.humanSeat,
         cardsInHand: game.handOf(seat).length,
         bid: game.bids[seat],
         taken: game.tricksTaken[seat],

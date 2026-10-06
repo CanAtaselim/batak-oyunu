@@ -20,6 +20,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final pal = context.pal;
 
     return Scaffold(
       appBar: AppBar(
@@ -30,9 +31,24 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
         children: [
           _Group(
+            title: Str.settingsTheme,
+            subtitle: Str.settingsThemeDesc,
+            child: _Choices<ThemeChoice>(
+              values: ThemeChoice.values,
+              selected: settings.theme,
+              label: (v) => switch (v) {
+                ThemeChoice.system => Str.themeSystem,
+                ThemeChoice.light => Str.themeLight,
+                ThemeChoice.dark => Str.themeDark,
+              },
+              onSelect: notifier.setTheme,
+            ),
+          ),
+          _Group(
             title: Str.settingsDeck,
             subtitle: Str.settingsDeckDesc,
             child: _DeckPicker(
+              brightness: Theme.of(context).brightness,
               selected: settings.deck,
               ownership: ref.watch(deckStoreProvider),
               turkishIndices: settings.turkishIndices,
@@ -43,6 +59,7 @@ class SettingsScreen extends ConsumerWidget {
             title: Str.settingsBoard,
             subtitle: Str.settingsBoardDesc,
             child: _BoardPicker(
+              brightness: Theme.of(context).brightness,
               selected: settings.boardStyle,
               deck: settings.deck,
               onSelect: notifier.setBoardStyle,
@@ -102,9 +119,9 @@ class SettingsScreen extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             Str.settingsNote,
-            style: TextStyle(fontSize: 12.5, color: BatakColors.onFeltDim),
+            style: TextStyle(fontSize: 12.5, color: pal.inkDim),
           ),
         ],
       ),
@@ -118,12 +135,14 @@ class SettingsScreen extends ConsumerWidget {
 /// yazar. Şimdilik bütün desteler açık.
 class _DeckPicker extends StatelessWidget {
   const _DeckPicker({
+    required this.brightness,
     required this.selected,
     required this.ownership,
     required this.turkishIndices,
     required this.onSelect,
   });
 
+  final Brightness brightness;
   final DeckTheme selected;
   final DeckOwnership ownership;
   final bool turkishIndices;
@@ -157,26 +176,28 @@ class _DeckPicker extends StatelessWidget {
       );
 
   Widget _row(BuildContext context, DeckTheme deck) {
+    final pal = context.pal;
     final unlocked = ownership.isUnlocked(deck);
     final lock = _lockLabel(deck);
     final isSelected = deck.id == selected.id;
 
     return InkWell(
       onTap: unlocked ? () => onSelect(deck) : null,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(18),
       child: Opacity(
         opacity: unlocked ? 1 : 0.55,
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(18),
+            color: isSelected
+                ? pal.accent.withValues(alpha: 0.22)
+                : pal.panel,
             border: Border.all(
-              color: isSelected
-                  ? BatakColors.brass
-                  : Colors.white.withValues(alpha: 0.12),
-              width: isSelected ? 1.6 : 1,
+              color: isSelected ? pal.accent : pal.line,
+              width: isSelected ? 1.8 : 1,
             ),
+            boxShadow: isSelected ? null : pal.soft,
           ),
           child: Row(
             children: [
@@ -208,35 +229,30 @@ class _DeckPicker extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: isSelected
-                            ? BatakColors.brass
-                            : BatakColors.onFelt,
+                        color: isSelected ? pal.accentDeep : pal.ink,
                       ),
                     ),
                     Text(
                       deck.description,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: BatakColors.onFeltDim,
-                      ),
+                      style: TextStyle(fontSize: 12, color: pal.inkDim),
                     ),
                     if (lock != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 3),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.lock_rounded,
                               size: 12,
-                              color: BatakColors.brass,
+                              color: pal.accentDeep,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               lock,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: BatakColors.brass,
+                                fontWeight: FontWeight.w700,
+                                color: pal.accentDeep,
                               ),
                             ),
                           ],
@@ -246,9 +262,9 @@ class _DeckPicker extends StatelessWidget {
                 ),
               ),
               if (isSelected)
-                const Icon(
+                Icon(
                   Icons.check_circle_rounded,
-                  color: BatakColors.brass,
+                  color: pal.accentDeep,
                   size: 20,
                 ),
             ],
@@ -262,11 +278,13 @@ class _DeckPicker extends StatelessWidget {
 /// Masa seçici: her üslup kendi minyatürüyle, seçili destenin renklerinde.
 class _BoardPicker extends StatelessWidget {
   const _BoardPicker({
+    required this.brightness,
     required this.selected,
     required this.deck,
     required this.onSelect,
   });
 
+  final Brightness brightness;
   final BoardStyle selected;
   final DeckTheme deck;
   final void Function(BoardStyle) onSelect;
@@ -283,36 +301,39 @@ class _BoardPicker extends StatelessWidget {
       spacing: 10,
       runSpacing: 10,
       children: [
-        for (final style in styles) _tile(style),
+        for (final style in styles) _tile(context, style),
       ],
     );
   }
 
-  Widget _tile(BoardStyle style) {
+  Widget _tile(BuildContext context, BoardStyle style) {
+    final pal = context.pal;
     final isSelected = style == selected;
     final useImage = style == BoardStyle.gorsel;
     return InkWell(
       onTap: () => onSelect(style),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(14),
       child: Column(
         children: [
           Container(
             width: 74,
             height: 104,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isSelected
-                    ? BatakColors.brass
-                    : Colors.white.withValues(alpha: 0.18),
-                width: isSelected ? 2 : 1,
+                color: isSelected ? pal.accentDeep : pal.line,
+                width: isSelected ? 2.4 : 1,
               ),
+              boxShadow: pal.soft,
             ),
             clipBehavior: Clip.antiAlias,
             child: useImage
                 ? Image.asset(deck.boardAsset, fit: BoxFit.cover)
                 : CustomPaint(
-                    painter: BoardPainter(style: style, palette: deck.board),
+                    painter: BoardPainter(
+                      style: style,
+                      palette: deck.board(brightness),
+                    ),
                   ),
           ),
           const SizedBox(height: 5),
@@ -324,7 +345,7 @@ class _BoardPicker extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                color: isSelected ? BatakColors.brass : BatakColors.onFeltDim,
+                color: isSelected ? pal.accentDeep : pal.inkDim,
               ),
             ),
           ),
@@ -353,10 +374,7 @@ class _Group extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
                   subtitle!,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: BatakColors.onFeltDim,
-                  ),
+                  style: TextStyle(fontSize: 12.5, color: context.pal.inkDim),
                 ),
               ),
             const SizedBox(height: 10),

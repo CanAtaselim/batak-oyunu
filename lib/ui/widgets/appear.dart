@@ -11,6 +11,7 @@ class Appear extends StatefulWidget {
     required this.child,
     this.ms = 220,
     this.offset = const Offset(0, 0.06),
+    this.scaleFrom = 1.0,
     super.key,
   });
 
@@ -19,6 +20,10 @@ class Appear extends StatefulWidget {
 
   /// Başlangıç kayması, çocuğun boyutuna oranlı.
   final Offset offset;
+
+  /// Başlangıç ölçeği. 1'den küçük verilince içerik büyüyerek belirir; pop-up
+  /// açılışında masanın üstüne çıktığı izlenimini verir.
+  final double scaleFrom;
 
   @override
   State<Appear> createState() => _AppearState();
@@ -53,9 +58,12 @@ class _AppearState extends State<Appear> with SingleTickerProviderStateMixin {
       animation: curve,
       builder: (context, child) => Opacity(
         opacity: curve.value,
-        child: FractionalTranslation(
-          translation: widget.offset * (1 - curve.value),
-          child: child,
+        child: Transform.scale(
+          scale: widget.scaleFrom + (1 - widget.scaleFrom) * curve.value,
+          child: FractionalTranslation(
+            translation: widget.offset * (1 - curve.value),
+            child: child,
+          ),
         ),
       ),
       child: widget.child,

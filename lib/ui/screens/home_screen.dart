@@ -20,15 +20,17 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(gameControllerProvider);
     final controller = ref.read(gameControllerProvider.notifier);
+    final pal = context.pal;
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
+          // Ortadan gelen ışık: üstte panel tonu, kenarlarda zemin.
           gradient: RadialGradient(
-            center: Alignment(0, -0.35),
-            radius: 1.2,
-            colors: [BatakColors.feltLight, BatakColors.felt, BatakColors.feltDark],
-            stops: [0, 0.55, 1],
+            center: const Alignment(0, -0.4),
+            radius: 1.15,
+            colors: [pal.panel, pal.surface, pal.surfaceAlt],
+            stops: const [0, 0.5, 1],
           ),
         ),
         child: SafeArea(
@@ -40,23 +42,23 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _Logo(deck: ref.watch(settingsProvider).deck),
+                    _Logo(deck: ref.watch(settingsProvider).deck, pal: pal),
                     const SizedBox(height: 28),
-                    const Text(
+                    Text(
                       Str.appName,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 42,
+                        fontSize: 44,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: -1,
-                        color: BatakColors.onFelt,
+                        letterSpacing: -1.2,
+                        color: pal.ink,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       '${Str.variantKozMaca} · ${Str.variantKozMacaDesc}',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 13.5, color: BatakColors.onFeltDim),
+                      style: TextStyle(fontSize: 13.5, color: pal.inkDim),
                     ),
                     const SizedBox(height: 34),
                     if (session != null) ...[
@@ -71,10 +73,7 @@ class HomeScreen extends ConsumerWidget {
                           '${session.game.scores[GameState.humanSeat]}',
                         ]),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: BatakColors.onFeltDim,
-                        ),
+                        style: TextStyle(fontSize: 12.5, color: pal.inkDim),
                       ),
                       const SizedBox(height: 18),
                       OutlinedButton(
@@ -118,9 +117,10 @@ class HomeScreen extends ConsumerWidget {
 
 /// Üç kağıtlık küçük bir yelpaze; destenin ne olduğunu ana ekranda gösterir.
 class _Logo extends StatelessWidget {
-  const _Logo({required this.deck});
+  const _Logo({required this.deck, required this.pal});
 
   final DeckTheme deck;
+  final BatakPalette pal;
 
   static const _cards = [
     ('SA', -0.22, -26.0, 0.0),
@@ -129,8 +129,19 @@ class _Logo extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 128,
+  Widget build(BuildContext context) => Container(
+        height: 150,
+        // Hale: kağıtlar zeminde kaybolmasın.
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            radius: 0.62,
+            colors: [
+              pal.accent.withValues(alpha: 0.55),
+              pal.accent.withValues(alpha: 0),
+            ],
+            stops: const [0.25, 1],
+          ),
+        ),
         child: Stack(
           alignment: Alignment.center,
           children: [

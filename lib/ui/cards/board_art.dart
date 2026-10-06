@@ -52,8 +52,12 @@ final class BoardPalette {
   /// Kenarlardaki koyu ton.
   final Color dark;
 
-  /// İnce çizgilerin ve halkanın rengi (altın, bronz…).
+  /// İnce çizgilerin ve halkanın rengi (altın, bronz, koyu yeşil…).
   final Color accent;
+
+  /// Açık renkli (pastel) masa mı? Dokuma izi ve kenar kararması buna göre
+  /// yön değiştirir: koyu masada beyaz, açık masada siyah ve çok daha hafif.
+  bool get isLight => base.computeLuminance() > 0.3;
 }
 
 /// Masayı çizer.
@@ -97,7 +101,9 @@ class BoardPainter extends CustomPainter {
 
     // Dokuma izi: çok soluk çapraz çizgiler.
     final threads = Paint()
-      ..color = Colors.white.withValues(alpha: 0.016)
+      ..color = palette.isLight
+          ? Colors.black.withValues(alpha: 0.022)
+          : Colors.white.withValues(alpha: 0.016)
       ..strokeWidth = 1;
     for (var x = -size.height; x < size.width; x += 7) {
       canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), threads);
@@ -112,7 +118,8 @@ class BoardPainter extends CustomPainter {
     canvas.drawCircle(
       center,
       radius,
-      Paint()..color = Colors.black.withValues(alpha: 0.10),
+      Paint()
+        ..color = Colors.black.withValues(alpha: palette.isLight ? 0.04 : 0.10),
     );
     canvas.drawCircle(
       center,
@@ -120,7 +127,7 @@ class BoardPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = math.max(1, size.width * 0.004)
-        ..color = palette.accent.withValues(alpha: 0.30),
+        ..color = palette.accent.withValues(alpha: palette.isLight ? 0.55 : 0.30),
     );
     canvas.drawCircle(
       center,
@@ -128,7 +135,7 @@ class BoardPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = math.max(0.8, size.width * 0.002)
-        ..color = palette.accent.withValues(alpha: 0.16),
+        ..color = palette.accent.withValues(alpha: palette.isLight ? 0.32 : 0.16),
     );
   }
 
@@ -147,14 +154,14 @@ class BoardPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = math.max(1.2, size.width * 0.005)
-        ..color = palette.accent.withValues(alpha: 0.34),
+        ..color = palette.accent.withValues(alpha: palette.isLight ? 0.6 : 0.34),
     );
     canvas.drawRRect(
       inner,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = math.max(0.8, size.width * 0.002)
-        ..color = palette.accent.withValues(alpha: 0.18),
+        ..color = palette.accent.withValues(alpha: palette.isLight ? 0.34 : 0.18),
     );
   }
 
@@ -162,7 +169,8 @@ class BoardPainter extends CustomPainter {
   void _pattern(Canvas canvas, Size size) {
     final step = size.width * 0.115;
     final half = step * 0.17;
-    final paint = Paint()..color = palette.accent.withValues(alpha: 0.055);
+    final paint = Paint()
+      ..color = palette.accent.withValues(alpha: palette.isLight ? 0.13 : 0.055);
     for (var y = step / 2; y < size.height; y += step) {
       final offset = ((y / step).floor().isEven) ? 0.0 : step / 2;
       for (var x = offset + step / 2; x < size.width; x += step) {
@@ -186,7 +194,10 @@ class BoardPainter extends CustomPainter {
         ..shader = RadialGradient(
           center: const Alignment(0, -0.15),
           radius: 0.95,
-          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.38)],
+          colors: [
+            Colors.transparent,
+            Colors.black.withValues(alpha: palette.isLight ? 0.11 : 0.38),
+          ],
           stops: const [0.6, 1],
         ).createShader(rect),
     );

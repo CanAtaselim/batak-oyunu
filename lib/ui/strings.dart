@@ -22,6 +22,9 @@ abstract final class Str {
   static const takenShort = 'A';
   static const bidTakenLine = '%d / %d';
   static const waitingBid = '…';
+
+  /// Künyede tahmin yerine: henüz söylenmedi.
+  static const noBidShort = '–';
   static const dealerBadge = 'Dağıtan';
 
   // Tahmin
@@ -56,6 +59,11 @@ abstract final class Str {
   static const tempoSlow = 'Yavaş';
   static const tempoNormal = 'Normal';
   static const tempoFast = 'Hızlı';
+  static const settingsTheme = 'Görünüm';
+  static const settingsThemeDesc = 'Açık, koyu ya da telefonun ayarı';
+  static const themeSystem = 'Telefon';
+  static const themeLight = 'Açık';
+  static const themeDark = 'Koyu';
   static const settingsDeck = 'Deste ve masa';
   static const settingsDeckDesc = 'Oyun sürerken de değiştirebilirsin';
   static const deckLocked = 'Kilitli';
